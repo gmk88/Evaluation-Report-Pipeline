@@ -26,7 +26,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from . import config, flows, jobs, llm, tools
+from . import config, flows, gaps, jobs, llm, tools
 
 WEB = Path(__file__).resolve().parent / 'web' / 'index.html'
 COOKIE = 'rp_t'
@@ -175,7 +175,7 @@ def api_job_get(jid):
     return d                              # 10 分钟没动静的记录，jobs.Manager.get 已经改成“中断”
 
 
-AGAIN = ('新报告', '事实库')    # 能“接着做”的任务：做完的步骤有记录，不重做（别的任务重新开始就行）
+AGAIN = ('新报告', '事实库', '补资料', '按新资料改')    # 能“接着做”的任务：做完的步骤有记录，不重做（别的任务重新开始就行）
 
 
 def api_job_again(jid):
@@ -187,8 +187,8 @@ def api_job_again(jid):
     if d.get('状态') not in ('失败', '中断', '已取消'):
         raise ApiError(400, '这个任务还在做' if d.get('状态') in ('进行', '等待') else '这个任务已经做完了，不用接着做')
     P = {k: v for k, v in P.items() if isinstance(k, str) and not k.startswith('_')}
-    if kind == '新报告':
-        title, params, root = build_job(kind, P, None, resume=True)
+    if kind in ('新报告', '补资料'):
+        title, params, root = build_job(kind, P, d.get('项目'), resume=True)
     else:
         title, params, root = build_job(kind, P, d.get('项目'))
     job = MANAGER.start(kind, title, params, flows.get(kind), root)
@@ -254,6 +254,33 @@ def _registered_roots():
     return {str(_resolve(Path(r['文件夹']).expanduser())) for r in tools.registered() if r.get('文件夹')}
 
 
+def _sp():
+    """补充资料的流程（用到时才导入：流程出问题不影响网页别的部分）。"""
+    from .flows import supplement
+    return supplement
+
+
+def _materials(raw, root, resume=False):
+    """页面给的资料路径（新报告、补资料共用）。resume：接着做时找不到的不管（上次已拷进项目、转成文字了）。"""
+    given = []
+    for x in _list(raw, '资料'):
+        s = Path(clean_path(x)).expanduser()
+        if not clean_path(x):
+            continue
+        if not s.is_absolute() or not s.exists():
+            if resume:
+                continue
+            raise ApiError(400, '这份资料找不到，检查一下路径：%s' % clean_path(x))
+        r = _resolve(s)
+        # 资料会整个拷进项目：存着密钥的文件、包含设置文件夹的大文件夹（比如整个用户目录）都不行
+        if _is_secret(r) or any(_inside(d, r, True) for d in (_resolve(config.DATA), _resolve(CLAUDE_DIR))):
+            raise ApiError(400, '这份资料里有程序设置或密钥，不能当资料：%s' % clean_path(x))
+        if _inside(root, r, True):
+            raise ApiError(400, '资料文件夹不能包含项目文件夹本身：%s' % clean_path(x))
+        given.append(str(r))
+    return given
+
+
 def build_job(kind, P, project, resume=False):
     """照 cli._job() 组织 (标题, 参数, 项目)，同时校验页面填的东西。
     resume：接着做上次没做完的新报告（文件夹是上次建好的，不要求是空的；资料已拷进去的，原件挪走了也不要紧）。"""
@@ -271,22 +298,7 @@ def build_job(kind, P, project, resume=False):
         method = _text(P.get('方法'), '方法')
         if method not in ('类比法', '风险评估法'):
             raise ApiError(400, '方法只能选“类比法”或“风险评估法”')
-        given = []
-        for x in _list(P.get('资料'), '资料'):
-            s = Path(clean_path(x)).expanduser()
-            if not clean_path(x):
-                continue
-            if not s.is_absolute() or not s.exists():
-                if resume:
-                    continue               # 上次已拷进项目、转成文字了
-                raise ApiError(400, '这份资料找不到，检查一下路径：%s' % clean_path(x))
-            r = _resolve(s)
-            # 资料会整个拷进新项目：存着密钥的文件、包含设置文件夹的大文件夹（比如整个用户目录）都不行
-            if _is_secret(r) or any(_inside(d, r, True) for d in (_resolve(config.DATA), _resolve(CLAUDE_DIR))):
-                raise ApiError(400, '这份资料里有程序设置或密钥，不能当资料：%s' % clean_path(x))
-            if _inside(root, r, True):
-                raise ApiError(400, '资料文件夹不能包含新项目文件夹本身：%s' % clean_path(x))
-            given.append(str(r))
+        given = _materials(P.get('资料'), root, resume)
         params = {'文件夹': str(root), '方法': method, '资料': given,
                   **{k: _text(P.get(k), k, 200) for k in ('名称', '简称', '编号', '日期')},
                   '审稿': _bool(P.get('审稿'), True), '出稿': _bool(P.get('出稿'), True), '只写': _list(P.get('只写'), '只写')}
@@ -327,7 +339,29 @@ def build_job(kind, P, project, resume=False):
         if isinstance(which, list):
             params['_锁'] = which        # 指定了项目就开始时一起加锁，有项目在忙当场回“正在跑”
         return '改稿：' + words[:20], params, None
-    if kind in ('出稿', '事实库'):
+    if kind == '补资料':
+        root = _project_root(project or P.get('项目'))
+        if not (root / '正文').is_dir():
+            raise ApiError(400, '这个文件夹里没有“正文”文件夹，不是报告项目：%s' % root)
+        given = _materials(P.get('资料'), root, resume)
+        if not given and not (resume and (root / '资料' / _sp().DIR / '进行.json').is_file()):
+            raise ApiError(400, '先选要补充的资料')
+        return '补充资料', {'资料': given, '说明': _text(P.get('说明'), '说明', 500)}, str(root)
+    if kind == '按新资料改':
+        root = _project_root(project or P.get('项目'))
+        data = _sp().pending(root)
+        if not data:
+            raise ApiError(400, '这个项目没有待确认的补充资料变化，先“补充资料”')
+        want = P.get('采用')
+        if want is not None:
+            if not isinstance(want, list) or not all(isinstance(x, int) and not isinstance(x, bool) for x in want):
+                raise ApiError(400, '采用要是编号列表')
+            known = {x['编号'] for x in data['变化']}
+            want = sorted(set(want) & known)
+            if not want:
+                raise ApiError(400, '一条变化都没勾上')
+        return '按新资料改', {'采用': want, '出稿': _bool(P.get('出稿'), False)}, str(root)
+    if kind in ('出稿', '事实库', '配图'):
         return kind, {}, str(_project_with_body(project or P.get('项目')))
     if kind == '提炼标准':
         return kind, {'只做': _list(P.get('只做'), '只做')}, None
@@ -522,6 +556,204 @@ def api_file(q, body):
     return {'路径': str(p), '文字': text}
 
 
+# ---- 报告页：一份报告的各章、问题、改过的地方（只读） ----
+_check_cache, _check_lock = {}, threading.Lock()
+RE_BACKUP = re.compile(r'^正文_(\d{8})_(\d{6})_?(.*)$')
+
+
+def _project_root(raw):
+    """页面给的项目文件夹：要在项目登记里。"""
+    p = allowed(raw)
+    if str(p) not in _registered_roots():
+        raise ApiError(403, '这个文件夹不在项目登记里')
+    if not p.is_dir():
+        raise ApiError(404, '项目文件夹找不到了：%s' % p)
+    return p
+
+
+def _check(root):
+    """机器检查，5 秒内同一个项目只跑一次（报告页每几秒刷新）。"""
+    with _check_lock:
+        hit = _check_cache.get(str(root))
+        if hit and time.time() - hit[0] < 5:
+            return hit[1]
+        c = tools.check(root)
+        _check_cache[str(root)] = (time.time(), c)
+        return c
+
+
+def _title(text, fname):
+    """章节标题：文件里第一个标题行，去掉 # 和 **。"""
+    for ln in text.split('\n')[:40]:
+        s = ln.strip()
+        if re.match(r'^#{1,3} ', s):
+            return s.lstrip('#').replace('**', '').strip()[:60]
+    return fname.rsplit('.', 1)[0]
+
+
+def _skeleton_text(method, fname):
+    p = config.ROOT / 'templates' / ('项目骨架_风险评估法' if method == '风险评估法' else '项目骨架') / '正文' / fname
+    return tools.read(p) if p.is_file() else None
+
+
+def _row_of(root):
+    for r in tools.registered():
+        if r.get('文件夹') and str(_resolve(Path(r['文件夹']).expanduser())) == str(root):
+            return r
+    return {}
+
+
+def _project_jobs(root, limit=8):
+    out = []
+    for j in MANAGER.list():
+        if j.get('项目') and str(_resolve(Path(j['项目']))) == str(root):
+            out.append(j)
+            if len(out) >= limit:
+                break
+    return out
+
+
+def api_project(q, body):
+    """一份报告的概况：各章（写好没有、字数、问题）、PDF、正在做的事和最近做过的事。"""
+    root = _project_root(q.get('路径'))
+    row = _row_of(root)
+    method = row.get('方法') or tools.method_of(root)
+    chk = _check(root)
+    rec_p = root / '资料' / '事实片段' / '接着做' / '写作记录.json'
+    try:
+        rec = json.loads(tools.read(rec_p)) if rec_p.is_file() else {}
+    except ValueError:
+        rec = {}
+    rv_dir = root / '审查' / '审稿记录'
+    names = tools.body_files(root)
+    chapters = []
+    for f in names:
+        p = root / '正文' / f
+        text = tools.read(p)
+        d = chk['按文件'].get(f, {})
+        rv = rv_dir / f
+        chapters.append({'文件': f, '标题': _title(text, f), '字数': len(text), '修改': p.stat().st_mtime,
+                         '写好': isinstance(rec.get(f), dict) or text != _skeleton_text(method, f),
+                         '审过': rv.stat().st_mtime if rv.is_file() else None,
+                         '错误': d.get('错误', []), '提示': d.get('提示', []), '待办': d.get('待办', [])})
+    other = [{'文件': k, '错误': v.get('错误', []), '提示': v.get('提示', []), '待办': v.get('待办', [])}
+             for k, v in chk['按文件'].items() if k not in names and (v.get('错误') or v.get('提示') or v.get('待办'))]
+    pdfs = sorted((root / '输出').glob('*.pdf'), key=lambda x: x.stat().st_mtime) if (root / '输出').is_dir() else []
+    pdf = {'路径': str(pdfs[-1]), '时间': pdfs[-1].stat().st_mtime, '页数': tools.pdf_pages(pdfs[-1])} if pdfs else None
+    note = root / '输出' / '交稿说明.md'
+    try:
+        gap = gaps.collect(root, chk)
+    except Exception:  # noqa: BLE001  清单出错不影响报告页
+        log('资料欠缺清单出错 %s\n%s' % (root, traceback.format_exc()))
+        gap = None
+    gap_md = root / '输出' / '资料欠缺清单.md'
+    return {'项目': row.get('项目') or tools.project_name(root), '方法': method, '文件夹': str(root),
+            '定稿': row.get('定稿') == '是', '错误': chk['错误'], '提示': chk['提示'], '待办': chk['待办'],
+            '章节': chapters, '其他文件': other, 'PDF': pdf, '交稿说明': str(note) if note.is_file() else None,
+            '做过的事': _project_jobs(root),
+            '资料欠缺': gap, '资料欠缺文件': str(gap_md) if gap_md.is_file() else None}
+
+
+def _segments(a, b, limit=4000):
+    """一处改动里逐字对比：[['=', 字], ['-', 删掉的], ['+', 加上的]]。太长的不细比。"""
+    if len(a) > limit or len(b) > limit:
+        return None
+    import difflib
+    out = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if op == 'equal':
+            out.append(['=', a[i1:i2]])
+        else:
+            if i2 > i1:
+                out.append(['-', a[i1:i2]])
+            if j2 > j1:
+                out.append(['+', b[j1:j2]])
+    return out
+
+
+def _diff(old, new, limit=200):
+    import difflib
+    a, b = old.split('\n'), new.split('\n')
+    out = []
+    for op, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b, autojunk=False).get_opcodes():
+        if op == 'equal':
+            continue
+        o, n = '\n'.join(a[i1:i2]), '\n'.join(b[j1:j2])
+        out.append({'行': j1 + 1, '原文': o, '改成': n, '逐字': _segments(o, n) if op == 'replace' else None})
+    return out[:limit], len(out)
+
+
+def _review_rows(p):
+    """审稿记录表（行｜级别｜问题｜依据｜原文｜改成｜结果）拆成一条条。"""
+    rows = []
+    for ln in tools.read(p).split('\n'):
+        s = ln.strip()
+        if not s.startswith('|') or s.startswith('|---') or s.startswith('| 行 |'):
+            continue
+        cells = [c.strip().replace('\\|', '|') for c in re.split(r'(?<!\\)\|', s.strip('|'))]
+        if len(cells) < 7 or cells[2] == '没有意见':
+            continue
+        r = dict(zip(('行', '级别', '问题', '依据', '原文', '改成', '结果'), cells[:7]))
+        r['逐字'] = _segments(r['原文'], r['改成']) if r['原文'] and r['改成'] and r['原文'] != r['改成'] else None
+        rows.append(r)
+    return rows
+
+
+def api_supplement(q, body):
+    """补充资料待确认的变化（没有时“变化”为 null）。"""
+    root = _project_root(q.get('路径'))
+    return {'项目': str(root), '变化': _sp().pending(root)}
+
+
+def api_supplement_discard(q, body):
+    """丢掉待确认的变化（新资料已经放进项目了，不删）。"""
+    root = _project_root(body.get('路径') or q.get('路径'))
+    if (root / jobs.LOCK_NAME).exists() and time.time() - (root / jobs.LOCK_NAME).stat().st_mtime < jobs.STALE:
+        raise ApiError(409, '这个项目正在跑任务，等它做完再丢')
+    _sp().discard(root)
+    return {'项目': str(root), '变化': None}
+
+
+def api_project_changes(q, body):
+    """改过的地方：和某一份备份（默认最近一份）比，正文哪几处变了；加上各章的审稿意见。"""
+    root = _project_root(q.get('路径'))
+    bdir = root / '备份'
+    backs = []
+    for d in sorted(bdir.iterdir(), key=lambda x: x.name, reverse=True) if bdir.is_dir() else []:
+        m = RE_BACKUP.match(d.name)
+        if d.is_dir() and m:
+            try:
+                t = datetime.datetime.strptime(m.group(1) + m.group(2), '%Y%m%d%H%M%S').timestamp()
+            except ValueError:
+                continue
+            backs.append({'名': d.name, '时间': t, '说明': m.group(3).replace('_', ' ')})
+    want = q.get('备份') or (backs[0]['名'] if backs else '')
+    if want and want not in {b['名'] for b in backs}:
+        raise ApiError(404, '没有这份备份')
+    files = []
+    if want:
+        old_dir = bdir / want
+        names = sorted(p.name for p in old_dir.glob('*.md'))     # 手工备份可能只存了改的那一章：只比备份里有的
+        for f in names:
+            if f.startswith(('_', '.')):
+                continue
+            o = tools.read(old_dir / f) if (old_dir / f).is_file() else ''
+            n = tools.read(root / '正文' / f) if (root / '正文' / f).is_file() else ''
+            if o == n:
+                continue
+            spots, total = _diff(o, n)
+            files.append({'文件': f, '标题': _title(n or o, f), '处': spots, '共': total})
+    rv_dir = root / '审查' / '审稿记录'
+    reviews = []
+    for p in sorted(rv_dir.glob('*.md')) if rv_dir.is_dir() else []:
+        if p.name == '跨章一致.md':
+            continue
+        reviews.append({'文件': p.name, '时间': p.stat().st_mtime, '意见': _review_rows(p)})
+    cross = rv_dir / '跨章一致.md'
+    return {'备份': backs, '对比': want, '改动': files, '审稿': reviews,
+            '跨章': tools.read(cross) if cross.is_file() else ''}
+
+
 MAC_PICK = '''on run argv
   set k to item 1 of argv
   set m to (item 2 of argv) is "1"
@@ -594,9 +826,11 @@ def api_pick(q, body):
 
 # ---- 请求处理 ----
 GET_ROUTES = {'/api/overview': api_overview, '/api/jobs': api_jobs_list, '/api/settings': api_settings_get,
-              '/api/usage': api_usage, '/api/standards': api_standards, '/api/file': api_file}
+              '/api/usage': api_usage, '/api/standards': api_standards, '/api/file': api_file,
+              '/api/project': api_project, '/api/project/changes': api_project_changes,
+              '/api/project/supplement': api_supplement}
 POST_ROUTES = {'/api/jobs': api_job_start, '/api/settings': api_settings_post, '/api/settings/test': api_settings_test,
-               '/api/open': api_open, '/api/pick': api_pick}
+               '/api/open': api_open, '/api/pick': api_pick, '/api/project/supplement/discard': api_supplement_discard}
 JOB_PATH = re.compile(r'^/api/jobs/([^/]+)(/cancel|/again)?$')
 
 

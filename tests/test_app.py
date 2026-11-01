@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app import cli, config, flows, jobs, llm, rules, tools  # noqa: E402
-from app.flows import common, distill, facts, new, review, revise  # noqa: E402
+from app.flows import common, distill, facts, new, review, revise, supplement  # noqa: E402
 
 SRC = ROOT / '_试跑' / '新材料副本'
 TMP = Path(tempfile.mkdtemp(prefix='rp_app_test_')).resolve()
@@ -1495,6 +1495,376 @@ class T03e_测连接和余额(Base):
             with mock.patch.object(llm, 'client', lambda c=None: fake), self.assertRaises(llm.CallError) as cm:
                 _saved[(llm, 'call')](jobs.Job('审稿', '审稿', {}, None), '审 07', '系统', '内容')
             self.assertFalse(cm.exception.retry, code)
+
+
+class T11_出稿后交稿说明开头跟着改(Base):
+    def test_出稿通过_开头的PDF和检查两行换成新的(self):
+        from app.flows import publish
+        root = project('t11')
+        tools.write(root / '输出' / '交稿说明.md', '# 交稿说明\n\n## 报告\n\n- 项目：甲\n- PDF：没出或没通过\n'
+                    '- 检查：错误 1、提示 2、待办 3\n\n## 请你确认\n\n- 检查：这一行不是开头的，不动\n')
+        with mock.patch.object(tools, 'report', return_value=(0, 'WPS 两轮导出核对通过：共 12 页')):
+            res = publish.publish(jobs.Job('出稿', '出稿', {}, root), root)
+        c = tools.check(root)
+        text = tools.read(root / '输出' / '交稿说明.md')
+        self.assertEqual((res['通过'], res['页数']), (True, 12))
+        self.assertTrue((root / '输出' / '资料欠缺清单.md').is_file())
+        self.assertIn('- PDF：共 12 页，目录页码逐页核对通过\n', text)
+        self.assertIn('- 检查：错误 %d、提示 %d、待办 %d\n' % (c['错误'], c['提示'], c['待办']), text)
+        self.assertNotIn('没出或没通过', text)
+        self.assertIn('- 检查：这一行不是开头的，不动', text)
+
+
+from app import gaps  # noqa: E402
+from app.flows import figures, publish  # noqa: E402
+
+WIND = ('表2.1-3  晋城市近三年全年和夏季风向频率统计\n'
+        '| 风向 | 全年（%） | 夏季（%） | 风向 | 全年（%） | 夏季（%） |\n|---|---|---|---|---|---|\n'
+        '| N | 3.51 | 2.00 | S | 2.21 | 4.00 |\n| NNE | 4.72 | 2.10 | SSW | 1.89 | 3.00 |\n'
+        '| NE | 5.86 | 3.50 | SW | 4.20 | 1.90 |\n| ENE | 2.03 | 3.00 | WSW | 6.14 | 6.00 |\n'
+        '| E | 2.83 | 5.00 | W | 2.01 | 8.00 |\n| ESE | 8.83 | 6.00 | WNW | 21.94 | 5.00 |\n'
+        '| SE | 3.28 | 15.50 | NW | 15.49 | 3.00 |\n| SSE | 2.10 | 8.00 | NNW | 1.71 | 2.00 |\n'
+        '| C（静风） | 11.25 | 22.00 | 合计 | 100.00 | 100.00 |\n\n注：建设单位提供。\n')
+
+
+def fig_project(name, wind=True, later=True):
+    """只有第2章的小项目：2.1.1 基本情况、2.1.2 风频表（可选）、表后已有一张图（可选）、2.3 总体布局。"""
+    root = TMP / name
+    (root / '正文').mkdir(parents=True)
+    tools.write(root / '项目信息.md', '- 项目名称：配图测试\n')
+    later_fig = '![图2.1-1  周边环境图](图/周边.png)\n图2.1-1  周边环境图\n\n周边见图2.1-1；可研图2.1-1是资料里的图。\n\n'
+    tools.write(root / '正文' / '02_1_工程概况.md',
+                '# 2 建设项目工程分析\n\n## 2.1 工程概况分析\n\n### 2.1.1 项目基本情况\n\n建在某地。\n\n'
+                '### 2.1.2 自然环境概况\n\n风向见表2.1-3。\n\n' + (WIND + '\n' if wind else '') +
+                (later_fig if later else '') + '## 2.3 总体布局分析与评价\n\n分区布置。\n')
+    return root
+
+
+def fake_draw(tb, png):
+    png = Path(png)
+    png.parent.mkdir(parents=True, exist_ok=True)
+    for s in ('.png', '.svg'):
+        png.with_suffix(s).write_bytes(b'x')
+    png.with_suffix('.json').write_text(json.dumps({'指纹': figures.WR.fingerprint(tb)}), encoding='utf-8')
+
+
+class T12_配图(Base):
+    def test_有风频表就画上_插在表注后面_后面的图和见图跟着改号(self):
+        root = fig_project('t12_wind')
+        with mock.patch.object(figures.WR, 'draw', side_effect=fake_draw) as d:
+            msg = figures.wind(root)
+        text = tools.read(root / '正文' / '02_1_工程概况.md')
+        self.assertEqual(d.call_count, 1)
+        self.assertEqual(msg, '画了风频玫瑰图（图2.1-1，按表2.1-3）')
+        self.assertIn('注：建设单位提供。\n\n![图2.1-1  晋城市近三年全年和夏季风频玫瑰图](图/风频玫瑰图.png){宽=14.10cm}\n'
+                      '图2.1-1  晋城市近三年全年和夏季风频玫瑰图\n', text)
+        self.assertIn('![图2.1-2  周边环境图](图/周边.png)\n图2.1-2  周边环境图', text)
+        self.assertIn('周边见图2.1-2；可研图2.1-1是资料里的图。', text)
+        self.assertTrue((root / '图' / '风频玫瑰图.json').is_file())
+        with mock.patch.object(figures.WR, 'draw', side_effect=fake_draw) as d:
+            self.assertIsNone(figures.wind(root))                    # 再跑一遍：图在、表没改，不画不插
+        self.assertEqual(d.call_count, 0)
+        self.assertEqual(tools.read(root / '正文' / '02_1_工程概况.md'), text)
+        self.assertEqual([m for lv, s, m in tools._checks.run(tools.Project(root).resolve())
+                          if m.startswith('图') and lv == '错误'], [])      # 图号连续、不重复
+
+    def test_表改了重画_手画的图不动_画不成正文不改(self):
+        root = fig_project('t12_redraw', later=False)
+        with mock.patch.object(figures.WR, 'draw', side_effect=fake_draw):
+            figures.wind(root)
+        p = root / '正文' / '02_1_工程概况.md'
+        tools.write(p, tools.read(p).replace('| N | 3.51 | 2.00 | S | 2.21 |', '| N | 3.50 | 2.00 | S | 2.22 |'))
+        with mock.patch.object(figures.WR, 'draw', side_effect=fake_draw) as d:
+            self.assertEqual(figures.wind(root), '风频玫瑰图（图2.1-1）按表2.1-3重画')
+        (root / '图' / '风频玫瑰图.json').unlink()                   # 没有指纹＝手画的
+        tools.write(p, tools.read(p).replace('| N | 3.50 |', '| N | 3.49 |').replace('| S | 2.22 |', '| S | 2.23 |'))
+        with mock.patch.object(figures.WR, 'draw', side_effect=fake_draw) as d:
+            self.assertIsNone(figures.wind(root))
+        self.assertEqual(d.call_count, 0)
+        root2 = fig_project('t12_fail', later=False)
+        before = tools.read(root2 / '正文' / '02_1_工程概况.md')
+        with mock.patch.object(figures.WR, 'draw', side_effect=RuntimeError('没找到 Chrome')):
+            self.assertIsNone(figures.refresh_wind(jobs.Job('出稿', '出稿', {}, root2), root2))
+        self.assertEqual(tools.read(root2 / '正文' / '02_1_工程概况.md'), before)
+
+    def test_从资料PDF截区域位置图和平面布置图_目录行不算_再跑不重复(self):
+        import io
+        import pymupdf
+        from PIL import Image
+        root = fig_project('t12_grab', wind=False, later=False)
+        (root / '资料').mkdir()
+        doc = pymupdf.open()
+        doc.new_page().insert_text((72, 100), '图1.3-1 某项目地理位置示意图……………… 9', fontname='china-s', fontsize=11)
+        p1 = doc.new_page()
+        buf = io.BytesIO()
+        Image.new('RGB', (400, 300), (200, 220, 240)).save(buf, 'PNG')
+        p1.insert_image(pymupdf.Rect(72, 120, 520, 450), stream=buf.getvalue())
+        p1.insert_text((200, 480), '图1.3-1  某项目地理位置示意图', fontname='china-s', fontsize=11)
+        p2 = doc.new_page()
+        for k in range(6):
+            p2.draw_rect(pymupdf.Rect(90 + k * 60, 150, 140 + k * 60, 400), color=(0, 0, 0))
+        p2.insert_text((220, 440), '图9.7-2  升压站平面布置图（示意）', fontname='china-s', fontsize=11)
+        doc.save(str(root / '资料' / '某项目初步设计.pdf'))
+        done, miss = figures.capture(root)
+        text = tools.read(root / '正文' / '02_1_工程概况.md')
+        self.assertEqual(done, ['图2.1-1 项目区域位置图（初设第2页）', '图2.3-1 升压站平面布置图（初设第3页）'])
+        self.assertEqual(miss, [])
+        self.assertIn('建在某地。\n\n![图2.1-1  项目区域位置图](图/项目区域位置图.png){宽=', text)
+        self.assertIn('注：引自初设图1.3-1。\n\n### 2.1.2', text)
+        self.assertIn('分区布置。\n\n<!-- 横向 -->\n\n![图2.3-1  升压站平面布置图](图/升压站平面布置图.png){宽=', text)
+        self.assertIn('注：引自初设图9.7-2（示意）。\n\n<!-- 纵向 -->', text)
+        rec = json.loads(tools.read(root / '图' / '配图记录.json'))
+        self.assertEqual((rec['项目区域位置图.png']['页'], rec['项目区域位置图.png']['审图号']), (2, False))
+        self.assertTrue((root / '图' / '升压站平面布置图.png').stat().st_size > 1000)
+        self.assertEqual(figures.capture(root), ([], []))             # 图已在正文里：不再截
+        self.assertEqual(tools.read(root / '正文' / '02_1_工程概况.md'), text)
+
+    def test_资料欠缺清单_三类分开_重复的不列两遍(self):
+        root = fig_project('t12_gaps', wind=False, later=False)
+        tools.write(root / '项目信息.md', '- 项目名称：配图测试\n- 建设单位：【待填】\n')
+        tools.write(root / '正文' / '03_类比企业（项目）调查与分析.md',
+                    '# 3 类比企业（项目）调查与分析\n\n本报告选择【待填：类比项目名称】，资料见【待填：资料名称】。\n')
+        tools.write(root / '图' / '配图记录.json', json.dumps({'项目区域位置图.png': {
+            '类别': '区域位置图', '资料': '某项目初步设计.pdf', '页': 15, '审图号': False}}, ensure_ascii=False))
+        tools.write(root / '资料' / '岗位因素表.md', '## 按不利情况定的\n\n- 工种和人数：可研没有写各岗位人数分配，按定员10人分。\n')
+        tools.write(root / '资料' / '口径.md', '## 可研没有写的\n\n- 各岗位人数分配：第2章、第4章\n- SF₆充气量：第2章、第4章\n')
+        d = gaps.write(root)
+        need = ' '.join(x['缺什么'] for x in d['要补'])
+        self.assertIn('建设单位', need)
+        self.assertIn('类比项目资料', need)
+        self.assertIn('当地气象站近三年全年和夏季风向频率统计', need)
+        self.assertIn('没有审图号', need)
+        self.assertEqual([x['缺什么'] for x in d['补了更准']], ['工种和人数'])
+        self.assertEqual(d['可以不补'], [{'缺什么': 'SF₆充气量', '用在': '第2章、第4章'}])
+        md = tools.read(root / '输出' / '资料欠缺清单.md')
+        self.assertIn('| 序号 | 缺什么 | 用在 | 找谁 | 现在报告里 |', md)
+        self.assertIn('不进报告', md)
+        self.assertNotIn('工艺流程', need)                            # 工艺流程图照可研画，不算缺资料
+
+    def test_工艺流程图_模型排框_查出问题退回改一次_插在2点5节末(self):
+        root = fig_project('t12_flow', wind=False, later=False)
+        tools.write(root / '正文' / '02_3_工艺及设备.md', '## 2.5 生产工艺分析与评价\n\n风机发电，经箱变升压送至升压站。\n\n'
+                    '## 2.6 生产设备及布局分析与评价\n\n设备。\n')
+        tools.write(root / '正文' / '04_职业病危害因素.md', '# 4 职业病危害因素\n\n表4.1-1  因素分布\n'
+                    '| 工作场所 | 职业病危害因素 |\n|---|---|\n| 风机 | 噪声、工频电磁场 |\n')
+        fig = {'图题': '风电场工艺流程及职业病危害因素分布图', '框': [
+            {'号': 'A1', '行': 1, '列': 1, '名称': '风电机组', '说明': '', '因素': [1], '虚线': False},
+            {'号': 'A2', '行': 1, '列': 2, '名称': '箱式变压器', '说明': '35 kV', '因素': [1, 2], '虚线': False}],
+            '连线': [{'从': 'A1', '到': 'A2', '物料': '电能', '虚线': False}],
+            '因素': ['噪音', '工频电磁场'], '注': ['注：框内第二行为主要参数。']}
+        good = dict(fig, 因素=['噪声', '工频电磁场'])
+
+        def draw(spec, png):
+            from PIL import Image
+            Image.new('RGB', (3200, 1600), 'white').save(png)
+
+        with mock.patch.object(figures.llm, 'call_retry', side_effect=[{'图': [fig]}, {'图': [good]}]) as call, \
+                mock.patch.object(figures.FC, 'draw', side_effect=draw), mock.patch.object(figures.WR, 'browser', return_value='/x'):
+            drew, miss = figures.flows(jobs.Job('配图', '配图', {}, root), root)
+        self.assertEqual(call.call_count, 2)
+        self.assertIn('“噪音”和表4.1-1的写法不一样', call.call_args_list[1].args[3])     # 图例名称和表4.1-1不一样，退回去改
+        self.assertEqual((drew, miss), (['风电场工艺流程及职业病危害因素分布图'], []))
+        text = tools.read(root / '正文' / '02_3_工艺及设备.md')
+        self.assertIn('送至升压站。\n\n<!-- 横向 -->\n\n![图2.5-1  风电场工艺流程及职业病危害因素分布图]'
+                      '(图/风电场工艺流程及职业病危害因素分布图.png){宽=23.00cm}', text)
+        self.assertIn('图2.5-1  风电场工艺流程及职业病危害因素分布图\n\n<!-- 纵向 -->\n\n## 2.6', text)
+        with mock.patch.object(figures.llm, 'call_retry') as call:
+            self.assertEqual(figures.flows(jobs.Job('配图', '配图', {}, root), root), ([], []))   # 有了就不再调模型
+        self.assertEqual(call.call_count, 0)
+        root2 = fig_project('t12_flow_nobrowser', wind=False, later=False)
+        tools.write(root2 / '正文' / '02_3_工艺及设备.md', '## 2.5 生产工艺分析与评价\n\n工艺。\n')
+        with mock.patch.object(figures.WR, 'browser', return_value=None), mock.patch.object(figures.llm, 'call_retry') as call:
+            drew, miss = figures.flows(jobs.Job('配图', '配图', {}, root2), root2)
+        self.assertEqual(call.call_count, 0)                                            # 画不了就不花钱
+        self.assertIn('没找到 Chrome', miss[0])
+
+    def test_没有风频表_用最近的国家站写表画图_后面的表跟着改号(self):
+        root = fig_project('t12_wtab', wind=False, later=False)
+        p = root / '正文' / '02_1_工程概况.md'
+        tools.write(p, '# 2 建设项目工程分析\n\n## 2.1 工程概况分析\n\n### 2.1.1 项目基本情况\n\n'
+                    '场址中心坐标为东经 106°00′00″，北纬 24°20′00″。\n\n表2.1-1  项目基本情况\n| 项目 | 内容 |\n|---|---|\n| 地点 | 某地 |\n\n'
+                    '### 2.1.2 自然环境概况\n\n（3）风向。可研没有给出风向频率。\n\n（4）其他。\n\n'
+                    '### 2.1.3 项目组成\n\n组成见表2.1-2。\n\n表2.1-2  项目组成\n| 名称 | 内容 |\n|---|---|\n| 主体 | 风机 |\n\n'
+                    '## 2.3 总体布局分析与评价\n\n分区布置。\n')
+        yr = {'全年': [400] * 16 + [200], '夏季': [100] * 16 + [50]}
+        yr['全年'][0] += 1500
+        yr['夏季'][15] += 400
+        data = {'站': {'592110': {'名称': '近站', '坐标': [24.6, 106.0, 100], '年': {y: yr for y in ('2022', '2023', '2024')}}}}
+        with mock.patch.object(figures.WS, 'load', return_value=data), mock.patch.object(figures.WR, 'draw', side_effect=fake_draw):
+            done, why = figures.wind_table(root)
+        text = tools.read(p)
+        self.assertIsNone(why)
+        self.assertIn('近站', done)
+        self.assertIn('（3）风向。可研没有给出风向频率。据距项目最近的国家气象观测站近站近三年逐时观测数据（见表2.1-2、图2.1-1），'
+                      '全年最多风向为N（', text)
+        self.assertIn('夏季最多风向为NNW（', text)
+        self.assertIn('\n表2.1-2  近站近三年全年和夏季风向频率统计\n', text)
+        self.assertIn('注：据国家气象科学数据中心近站近三年逐时观测数据统计；静风为风速不大于0.2 m/s。\n\n'
+                      '![图2.1-1  近站近三年全年和夏季风频玫瑰图]', text)
+        self.assertIn('组成见表2.1-3。', text)                                   # 后面的表和“见表××”跟着改号
+        self.assertIn('\n表2.1-3  项目组成\n', text)
+        self.assertEqual(json.loads(tools.read(root / '图' / '配图记录.json'))['风频表']['站'], '近站')
+        self.assertEqual([m for lv, s, m in tools._checks.run(tools.Project(root).resolve())
+                          if lv == '错误' and m.startswith(('表', '图'))], [])
+        g = gaps.collect(root)
+        self.assertIn('近站', ' '.join(x['现在'] for x in g['补了更准']))           # 代用站：列进“补了更准”
+        self.assertNotIn('风频玫瑰图', ' '.join(x['现在'] for x in g['要补']))
+        with mock.patch.object(figures.WS, 'load', return_value=data):
+            self.assertEqual(figures.wind_table(root), (None, None))               # 有了就不再写
+        tools.write(p, tools.read(p).replace('表2.1-2  近站近三年', '表2.1-2  某县气象站近三年')
+                    .replace('据国家气象科学数据中心近站', '据某县气象站'))             # 改稿、补资料换成当地气象站的数据
+        with mock.patch.object(figures.WR, 'draw', side_effect=fake_draw):
+            self.assertIn('重画', figures.wind(root))
+        text = tools.read(p)
+        self.assertRegex(text, r'\n!\[图2\.1-1  某县气象站近三年全年和夏季风频玫瑰图\]\(图/[^)]+\)\{宽=14\.10cm\}\n'
+                               r'图2\.1-1  某县气象站近三年全年和夏季风频玫瑰图\n')      # 图题跟着表题换
+        self.assertNotIn('近站近三年全年和夏季风频玫瑰图', text)
+        self.assertNotIn('近站', ' '.join(x['现在'] for x in gaps.collect(root)['补了更准']))   # 不再列代用站
+        far ={'站': {'1': dict(data['站']['592110'], 坐标=[27.0, 106.0, 100])}}
+        root2 = fig_project('t12_wtab_far', wind=False, later=False)
+        tools.write(root2 / '正文' / '02_1_工程概况.md', '# 2 建设项目工程分析\n\n## 2.1 工程概况分析\n\n### 2.1.1 项目基本情况\n\n'
+                    '场址中心坐标为东经 106°00′00″，北纬 24°20′00″。\n\n### 2.1.2 自然环境概况\n\n（3）风向。可研没有给出风向频率。\n')
+        with mock.patch.object(figures.WS, 'load', return_value=far):
+            done, why = figures.wind_table(root2)
+        self.assertIsNone(done)
+        self.assertIn('100 公里内没有', why)
+
+    def test_命令行和出稿都接上了(self):
+        root = fig_project('t12_cli', later=False)
+        self.assertEqual(cli._job(cli._parser().parse_args(['配图', str(root)])), ('配图', '配图', {}, str(root)))
+        self.assertEqual(flows.get('配图').__name__, 'job_figures')
+        with mock.patch('sys.stdout', new=__import__('io').StringIO()):
+            self.assertEqual(cli.main(['资料欠缺', str(root)]), 0)
+        self.assertTrue((root / '输出' / '资料欠缺清单.md').is_file())
+        with mock.patch.object(figures.WR, 'draw', side_effect=fake_draw), \
+                mock.patch.object(tools, 'report', return_value=(0, 'WPS 两轮导出核对通过：共 9 页')):
+            res = publish.publish(jobs.Job('出稿', '出稿', {}, root), root)
+        self.assertIn('风频玫瑰图.png', tools.read(root / '正文' / '02_1_工程概况.md'))   # 出稿前把图画上
+        self.assertGreater(res['资料欠缺'], 0)
+
+
+class T11_补充资料(Base):
+    OLD = '- 定员表：合计56人（出处：可研202607_带节号 12.4 表14.4-1）'
+    GAP = '- 建设性质（新建、改建、扩建）：影响到第2章'
+
+    def changes(self, **k):
+        return {'变化': [
+            {'类别': '更正', '节': '劳动定员与班制', '原文': self.OLD, '新文': '- 定员表：合计60人（出处：初设 8.1）',
+             '影响': ['99_没有这个.md'], '说明': '可研56人，初设60人'},
+            {'类别': '更正', '节': '劳动定员与班制', '原文': '- 事实库里没有这一行', '新文': '- 乱改（出处：初设）', '影响': [], '说明': ''},
+            {'类别': '新增', '节': '主要设备', '原文': '', '新文': '- 新增引风机 2 台（出处：初设 5.2）', '影响': ['05_职业病防护设施分析与评价.md'], '说明': ''},
+            {'类别': '新增', '节': '主要设备', '原文': '', '新文': '- 新增引风机 2 台（出处：初设 5.3）', '影响': [], '说明': '重复'},
+            {'类别': '补上', '节': '项目概况', '原文': self.GAP, '新文': '- 建设性质：改建（出处：初设 1.1）', '影响': ['02_1_工程概况.md'], '说明': ''},
+            {'类别': '补上', '节': '项目概况', '原文': '- 口径里没有这一行', '新文': '- 随便（出处：初设）', '影响': [], '说明': ''},
+        ]}
+
+    def supplement(self, name):
+        root = project(name)
+        src = TMP / (name + '_新资料')
+        src.mkdir()
+        (src / '初设.txt').write_text('第一章 总论\n本项目为改建。\n第八章 劳动定员\n全厂定员60人。\n' * 5, encoding='utf-8')
+        FAKE.reset(('摘新资料', self.changes))
+        job = jobs.Job('补资料', '补充资料', {'资料': [str(src)], '说明': '初设'}, root)
+        res = supplement.job_supplement(job)
+        return root, res
+
+    def test_补资料_只列变化_不动事实库和正文(self):
+        root, res = self.supplement('t11_a')
+        fx = tools.read(root / '资料' / '事实库.md')
+        body = {f: tools.read(root / '正文' / f) for f in tools.body_files(root)}
+        self.assertEqual(FAKE.labels(), ['摘新资料'])
+        self.assertEqual(res['变化'], {'新增': 1, '更正': 1, '补上': 1})          # 不合格的、重复的不列
+        d = supplement.pending(root)
+        items = {x['类别']: x for x in d['变化']}
+        self.assertEqual([x['编号'] for x in d['变化']], [1, 2, 3])
+        fix = items['更正']['影响']
+        self.assertNotIn('99_没有这个.md', fix)                                  # 正文里没有的文件去掉
+        self.assertIn('02_1_工程概况.md', fix)                                    # 正文里写着“56人”的也算上
+        self.assertTrue(all('56人' in body[f] for f in fix))
+        self.assertEqual(set(d['预计']), set(res['要改']))
+        # 新资料记进项目资料：原件拷进来，文字以后审稿、重摘事实库都读得到
+        self.assertTrue(any(p.name == '初设.txt' for p in (root / '资料' / '原件').rglob('*')))
+        names = [n for n, _ in tools.source_texts(root)]
+        self.assertTrue(any('初设' in n for n in names), names)
+        self.assertEqual(tools.read(root / '资料' / '事实库.md'), fx)
+        self.assertEqual({f: tools.read(root / '正文' / f) for f in tools.body_files(root)}, body)
+
+    def test_按新资料改_只改勾上的和受影响的章(self):
+        root, _ = self.supplement('t11_b')
+        tools.write(root / '资料' / '岗位因素表.md', '# 岗位因素表\n\n| 评价单元 | 工种 | 定员 |\n|---|---|---|\n| 烧结 | 运行工 | 56 |\n')
+        d = supplement.pending(root)
+        fix = next(x for x in d['变化'] if x['类别'] == '更正')
+        add = next(x for x in d['变化'] if x['类别'] == '新增')
+        want = {f for f in fix['影响']}
+        seen, fail = [], {'02_1_工程概况.md'}
+
+        def modify(label, **k):
+            f = label[len('按新资料改 '):]
+            seen.append(f)
+            if f in fail:
+                raise llm.CallError(label + '：' + llm.CUT)
+            return {'改动': [], '跳过': []}
+
+        FAKE.reset(('按新资料改 ', modify),
+                   ('改 岗位因素表', lambda **k: {'改动': [{'原文': '| 烧结 | 运行工 | 56 |', '新文': '| 烧结 | 运行工 | 60 |', '说明': ''}], '跳过': []}))
+        job = jobs.Job('按新资料改', '按新资料改', {'采用': [fix['编号'], add['编号']]}, root)
+        with self.assertRaises(RuntimeError):
+            supplement.job_apply(job)                                            # 一章断了：任务失败，别的章改好的记着
+        self.assertEqual(set(seen), want | set(add['影响']))
+        fx = tools.read(root / '资料' / '事实库.md')
+        self.assertIn('- 定员表：合计60人（出处：初设 8.1）', fx)
+        self.assertNotIn(self.OLD, fx)
+        self.assertIn('- 新增引风机 2 台（出处：初设 5.2）', fx)
+        self.assertNotIn('建设性质：改建', fx)                                     # 没勾上的不改
+        kj = tools.read(root / '资料' / '口径.md')
+        self.assertIn(self.GAP, kj)
+        self.assertIn('定员表：合计60人（出处：初设 8.1） | 说法2（补充资料）', kj)   # 旧说法记进“说法不一”
+        self.assertIn('| 60 |', tools.read(root / '资料' / '岗位因素表.md'))
+        # 接着做：事实库不再改一遍，改好的章不重改
+        seen.clear()
+        fail.clear()
+        del FAKE.calls[:]
+        res = supplement.job_apply(jobs.Job('按新资料改', '按新资料改', {'采用': [fix['编号'], add['编号']]}, root))
+        self.assertEqual(seen, ['02_1_工程概况.md'])
+        self.assertNotIn('改 岗位因素表', FAKE.labels())
+        self.assertEqual(tools.read(root / '资料' / '事实库.md').count('合计60人'), 1)
+        self.assertIsNone(supplement.pending(root))                              # 做完待确认的删掉
+        self.assertFalse((root / '资料' / supplement.DIR).exists())
+        self.assertTrue(Path(res['备份']).is_dir())
+        self.assertIn('## 补充资料', tools.read(root / '输出' / '交稿说明.md'))
+
+    def test_补上_从可研没有写的里删掉(self):
+        root, _ = self.supplement('t11_c')
+        gap = next(x for x in supplement.pending(root)['变化'] if x['类别'] == '补上')
+        FAKE.reset(('按新资料改 ', lambda **k: {'改动': [], '跳过': []}))
+        supplement.job_apply(jobs.Job('按新资料改', '按新资料改', {'采用': [gap['编号']]}, root))
+        self.assertNotIn(self.GAP, tools.read(root / '资料' / '口径.md'))
+        fx = tools.read(root / '资料' / '事实库.md')
+        self.assertIn('- 建设性质：改建（出处：初设 1.1）', fx.split('## 选址')[0])      # 插在项目概况这一节
+
+    def test_没事实库_扫描件(self):
+        root = project('t11_d')
+        (root / '资料' / '事实库.md').unlink()
+        src = TMP / 't11_d_新资料.txt'
+        src.write_text('第一章 总论\n本项目为改建。\n' * 20, encoding='utf-8')
+        with self.assertRaisesRegex(RuntimeError, '还没有事实库'):
+            supplement.job_supplement(jobs.Job('补资料', '补充资料', {'资料': [str(src)]}, root))
+        empty = TMP / 't11_d_扫描.pdf'
+        empty.write_bytes(b'%PDF-1.4\n%%EOF\n')
+        with self.assertRaisesRegex(RuntimeError, '没转出文字'):
+            supplement.job_supplement(jobs.Job('补资料', '补充资料', {'资料': [str(empty)]}, project('t11_e')))
+
+    def test_有索引的项目_块加进索引(self):
+        root = project('t11_f')
+        t = root / '资料' / '文本'
+        t.mkdir(parents=True)
+        (t / '001_可研.txt').write_text('可研原文', encoding='utf-8')
+        (t / '索引.json').write_text(json.dumps({'块': [{'文件': '001_可研.txt', '来源': str(root / '资料' / '可研.docx'), '字数': 4, '标题': []}],
+                                                '跳过': []}, ensure_ascii=False), encoding='utf-8')
+        job = jobs.Job('补资料', '补充资料', {}, root)
+        supplement._register(job, root, '1101-2300', [('初设.txt', str(root / '资料' / '原件' / '补充_1101-2300' / '初设.txt'), '初设原文')])
+        self.assertEqual(dict(tools.source_texts(root)), {'可研.docx': '可研原文', '初设.txt': '初设原文'})
+        self.assertFalse((root / tools.SETTINGS_FILE).exists())
 
 
 class T99_真文件没动(unittest.TestCase):

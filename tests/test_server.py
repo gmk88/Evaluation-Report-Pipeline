@@ -567,6 +567,91 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(len(started), 1)
         shutil.rmtree(p)
 
+    # ---- 报告页 ----
+    def test_project_page(self):
+        pq = lambda path, x=None: '/api/project%s?' % (x or '') + server.urllib.parse.urlencode(path)  # noqa: E731
+        code, _r, d, _t = self.req('GET', pq({'路径': str(PROJ)}))
+        self.assertEqual(code, 200, d)
+        self.assertEqual(d['项目'], '测试项目甲')
+        c = d['章节'][0]
+        self.assertEqual((c['文件'], c['标题'], c['写好']), ('01_总论.md', '1 总论', True))
+        self.assertIsNone(d['PDF'])
+        self.assertEqual(set(d['资料欠缺']) >= {'要补', '补了更准', '可以不补'}, True)   # 资料欠缺清单一起回
+        # 不在登记里的文件夹、没口令、别的网站来的都不行
+        self.assertEqual(self.req('GET', pq({'路径': str(EMPTY)}))[0], 403)
+        self.assertEqual(self.req('GET', pq({'路径': str(PROJ)}), token=False)[0], 403)
+        self.assertEqual(self.req('GET', pq({'路径': str(PROJ)}), headers={'Origin': 'http://evil.example'})[0], 403)
+
+    def test_project_changes(self):
+        pq = lambda q: '/api/project/changes?' + server.urllib.parse.urlencode(q)  # noqa: E731
+        code, _r, d, _t = self.req('GET', pq({'路径': str(PROJ)}))
+        self.assertEqual((code, d['备份'], d['改动'], d['审稿']), (200, [], [], []))
+        bk = PROJ / '备份' / '正文_20261101_120000_审稿前'
+        bk.mkdir(parents=True)
+        (bk / '01_总论.md').write_text('# 1 总论\n\n测试的正文。\n', encoding='utf-8')
+        rv = PROJ / '审查' / '审稿记录'
+        rv.mkdir(parents=True)
+        (rv / '01_总论.md').write_text('# 审稿记录 01_总论.md\n\n| 行 | 级别 | 问题 | 依据 | 原文 | 改成 | 结果 |\n|---|---|---|---|---|---|---|\n'
+                                      '| 3 | 必改 | 用字 | K001 | 测试的正文 | 测试用的正文 | 已改 |\n| 4 | 建议 | a\\|b | R1 | x | y | 没改 |\n',
+                                      encoding='utf-8')
+        try:
+            code, _r, d, _t = self.req('GET', pq({'路径': str(PROJ)}))
+            self.assertEqual((code, d['对比']), (200, bk.name))
+            self.assertEqual(d['备份'][0]['说明'], '审稿前')
+            spot = d['改动'][0]['处'][0]
+            self.assertEqual((spot['行'], spot['原文'], spot['改成']), (3, '测试的正文。', '测试用的正文。'))
+            self.assertIn(['+', '用'], spot['逐字'])
+            ops = d['审稿'][0]['意见']
+            self.assertEqual([o['结果'] for o in ops], ['已改', '没改'])
+            self.assertEqual(ops[1]['问题'], 'a|b')        # 表格里转义的竖线照原样还原
+            self.assertEqual(self.req('GET', pq({'路径': str(PROJ), '备份': '../正文'}))[0], 404)
+        finally:
+            shutil.rmtree(PROJ / '备份')
+            shutil.rmtree(PROJ / '审查')
+
+
+    # ---- 补充资料 ----
+    def test_supplement(self):
+        sq = '/api/project/supplement?' + server.urllib.parse.urlencode({'路径': str(PROJ)})
+        code, _r, d, _t = self.req('GET', sq)
+        self.assertEqual((code, d['变化']), (200, None))
+        self.assertEqual(self.req('GET', '/api/project/supplement?' + server.urllib.parse.urlencode({'路径': str(EMPTY)}))[0], 403)
+        src = TMP / '初设.txt'
+        src.write_text('初设', encoding='utf-8')
+        cases = [({'资料': []}, '先选要补充的资料'), ({'资料': [str(TMP / '没有.txt')]}, '找不到'),
+                 ({'资料': [str(DATA)]}, '程序设置或密钥'), ({'资料': [str(TMP)]}, '程序设置或密钥')]
+        for P, want in cases:
+            code, _r, d, _t = self.req('POST', '/api/jobs', {'类别': '补资料', '参数': P, '项目': str(PROJ)})
+            self.assertEqual(code, 400, P)
+            self.assertIn(want, d['错误'])
+        code, _r, d, _t = self.req('POST', '/api/jobs', {'类别': '补资料', '参数': {'资料': [str(src)]}, '项目': str(EMPTY)})
+        self.assertEqual(code, 403)                                    # 不在项目登记里
+        started = []
+        with mock.patch.object(server.MANAGER, 'start', lambda kind, title, params, fn, root: started.append((kind, title, params, root))
+                               or type('J', (), {'id': '0101-000000-aaaa'})()):
+            code, _r, d, _t = self.req('POST', '/api/jobs', {'类别': '补资料', '参数': {'资料': [str(src)], '说明': '初设'}, '项目': str(PROJ)})
+            self.assertEqual(code, 200, d)
+            self.assertEqual(started[-1], ('补资料', '补充资料', {'资料': [str(src)], '说明': '初设'}, str(PROJ)))
+            # 没有待确认的变化时不能“按新资料改”
+            code, _r, d, _t = self.req('POST', '/api/jobs', {'类别': '按新资料改', '参数': {}, '项目': str(PROJ)})
+            self.assertEqual(code, 400)
+            pend = PROJ / '资料' / '事实片段' / '补资料' / '待确认.json'
+            pend.parent.mkdir(parents=True)
+            pend.write_text(json.dumps({'变化': [{'编号': 1}, {'编号': 2}], '新资料': ['初设.txt']}, ensure_ascii=False), encoding='utf-8')
+            try:
+                self.assertEqual(self.req('GET', sq)[2]['变化']['新资料'], ['初设.txt'])
+                for bad in ([9], 'all', [True]):
+                    self.assertEqual(self.req('POST', '/api/jobs', {'类别': '按新资料改', '参数': {'采用': bad}, '项目': str(PROJ)})[0], 400, bad)
+                code, _r, d, _t = self.req('POST', '/api/jobs', {'类别': '按新资料改', '参数': {'采用': [2, 9], '出稿': True}, '项目': str(PROJ)})
+                self.assertEqual(code, 200, d)
+                self.assertEqual(started[-1][2], {'采用': [2], '出稿': True})
+                code, _r, d, _t = self.req('POST', '/api/project/supplement/discard', {'路径': str(PROJ)})
+                self.assertEqual((code, d['变化']), (200, None))
+                self.assertFalse(pend.exists())
+                self.assertEqual(self.req('POST', '/api/project/supplement/discard', {'路径': str(EMPTY)})[0], 403)
+            finally:
+                shutil.rmtree(PROJ / '资料', ignore_errors=True)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -9,6 +9,8 @@
          [--不审稿] [--不出稿] [--只写 07 …]
   出稿   项目文件夹
   事实库 项目文件夹
+  补资料 项目文件夹 --资料 文件或文件夹 … [--说明 文字]   （只列变化，不改正文）
+  按新资料改 项目文件夹 [--采用 1 3 …（不写＝全部）] [--出稿]
   提炼标准 [--只做 口径 各章 补漏]
   自测   [--秒 3] [--失败]
 """
@@ -18,7 +20,7 @@ import sys
 import threading
 from pathlib import Path
 
-from . import flows, jobs, llm, tools
+from . import flows, gaps, jobs, llm, tools
 
 
 def _parser():
@@ -49,8 +51,16 @@ def _parser():
     p.add_argument('--不出稿', action='store_true')
     p.add_argument('--只写', nargs='*', default=[])
     p.add_argument('--接着做', action='store_true', help='接着做上次没做完的（文件夹是上次建好的；做完的步骤不重做）')
-    for k in ('出稿', '事实库'):
+    for k in ('出稿', '事实库', '配图', '资料欠缺'):
         sp.add_parser(k).add_argument('项目')
+    p = sp.add_parser('补资料')
+    p.add_argument('项目')
+    p.add_argument('--资料', nargs='*', default=[])
+    p.add_argument('--说明', default='')
+    p = sp.add_parser('按新资料改')
+    p.add_argument('项目')
+    p.add_argument('--采用', nargs='*', type=int, default=None)
+    p.add_argument('--出稿', action='store_true')
     sp.add_parser('提炼标准').add_argument('--只做', nargs='*', default=[])
     p = sp.add_parser('自测')
     p.add_argument('--秒', type=int, default=3)
@@ -71,8 +81,12 @@ def _job(a):
     if k == '新报告':
         return k, '新报告', {'文件夹': a.文件夹, '方法': a.方法, '资料': a.资料, '名称': a.名称, '简称': a.简称, '编号': a.编号,
                           '日期': a.日期, '审稿': not a.不审稿, '出稿': not a.不出稿, '只写': a.只写, '接着做': a.接着做}, a.文件夹
-    if k in ('出稿', '事实库'):
+    if k in ('出稿', '事实库', '配图'):
         return k, k, {}, a.项目
+    if k == '补资料':
+        return k, '补充资料', {'资料': [str(Path(x).expanduser().resolve()) for x in a.资料], '说明': a.说明}, a.项目
+    if k == '按新资料改':
+        return k, k, {'采用': a.采用, '出稿': a.出稿}, a.项目
     if k == '提炼标准':
         return k, k, {'只做': a.只做}, None
     return k, '自测', {'秒': a.秒, '失败': a.失败}, None
@@ -88,6 +102,11 @@ def main(argv=None):
         c = tools.check(a.项目, a.章)
         print(json.dumps({k: c[k] for k in ('错误', '提示', '待办', '按文件')}, ensure_ascii=False, indent=1)[:6000])
         return 1 if c['错误'] else 0
+    if a.kind == '资料欠缺':
+        d = gaps.write(a.项目)
+        print(json.dumps({k: d[k] for k in ('要补', '补了更准', '可以不补')}, ensure_ascii=False, indent=1)[:6000])
+        print('已写 %s' % (Path(a.项目) / '输出' / gaps.FILE))
+        return 0
     kind, title, params, project = _job(a)
     params['_回显'] = True
     job = jobs.Job(kind, title, params, project)
