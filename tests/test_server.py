@@ -652,6 +652,36 @@ class ServerTest(unittest.TestCase):
             finally:
                 shutil.rmtree(PROJ / '资料', ignore_errors=True)
 
+    def test_analog(self):
+        from app.flows import analog
+        src = TMP / '控评.txt'
+        src.write_text('控评', encoding='utf-8')
+        start = lambda P: self.req('POST', '/api/jobs', {'类别': '类比资料', '参数': P, '项目': str(PROJ)})  # noqa: E731
+        self.assertEqual(self.req('POST', '/api/jobs', {'类别': '类比资料', '参数': {'资料': [str(src)]}, '项目': str(EMPTY)})[0], 403)
+        code, _r, d, _t = start({'资料': [str(src)]})
+        self.assertEqual(code, 400)                                    # 风险评估法的报告没有类比那一章
+        self.assertIn('用不上', d['错误'])
+        ch3 = PROJ / '正文' / '03_类比企业（项目）调查与分析.md'
+        ch3.write_text('# 3 类比企业（项目）调查与分析\n', encoding='utf-8')
+        started = []
+        try:
+            code, _r, d, _t = start({})
+            self.assertEqual(code, 400)
+            self.assertIn('先选类比项目的资料', d['错误'])
+            with mock.patch.object(server.MANAGER, 'start', lambda kind, title, params, fn, root: started.append((kind, title, params, root))
+                                   or type('J', (), {'id': '0101-000000-bbbb'})()):
+                code, _r, d, _t = start({'资料': [str(src)], '说明': '古交正沟控评'})
+                self.assertEqual(code, 200, d)
+            self.assertEqual(started[-1], ('类比资料', '补类比资料', {'资料': [str(src)], '说明': '古交正沟控评'}, str(PROJ)))
+            # 接着做：原件挪走了也行，只要上次没做完
+            with self.assertRaises(server.ApiError):
+                server.build_job('类比资料', {}, str(PROJ), resume=True)
+            with mock.patch.object(analog, 'unfinished', return_value=True):
+                title, params, root = server.build_job('类比资料', {'资料': [str(TMP / '挪走了.pdf')]}, str(PROJ), resume=True)
+            self.assertEqual((title, params, root), ('补类比资料', {'资料': [], '说明': '', '接着做': True}, str(PROJ)))
+        finally:
+            ch3.unlink()
+
 
 if __name__ == '__main__':
     unittest.main()

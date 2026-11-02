@@ -439,6 +439,35 @@ def facts(root):
     return out
 
 
+# 类比项目的资料（别的项目的控评、检测、体检报告）放在 资料/类比/，不算本项目资料：
+# 不进 资料/文本/索引.json，不当事实来源，转资料时也不转（app/flows/analog.py）
+ANALOG_DIR = '类比'
+
+
+def analog_dir(root):
+    return Path(root) / '资料' / ANALOG_DIR
+
+
+def analog_texts(root):
+    """类比资料的文字 [(资料名, 全文)]（没有就是空列表）。"""
+    try:
+        st = json.loads(read(analog_dir(root) / '类比资料.json'))
+    except (OSError, ValueError):
+        return []
+    out = []
+    for x in st.get('文本', []):
+        p = analog_dir(root) / '文本' / x.get('文件', '')
+        if p.is_file():
+            out.append((x.get('资料', p.name), read(p)))
+    return out
+
+
+def analog_facts(root):
+    """从类比资料摘的类比事实（没有返回 ''）。"""
+    p = analog_dir(root) / '类比事实.md'
+    return read(p) if p.is_file() else ''
+
+
 def open_path(p):
     p = str(p)
     if config.IS_WIN:

@@ -96,10 +96,10 @@ def _copy(given, dst):
             shutil.copy2(s, dst / s.name)
 
 
-def _convert(job, root, folder):
-    """把 folder 里的新资料转成文字。在中间结果文件夹里转（转资料的程序会先删掉 资料/文本/ 里原有的块，不能直接转）。
+def _convert(job, root, folder, tmp=None):
+    """把 folder 里的新资料转成文字。在中间结果文件夹 tmp 里转（转资料的程序会先删掉 资料/文本/ 里原有的块，不能直接转）。
     返回 ([(资料名, 来源路径, 全文)], [没转成的说明])。"""
-    tmp = _dir(root) / '转换'
+    tmp = tmp or _dir(root) / '转换'
     shutil.rmtree(tmp, ignore_errors=True)
     tmp.mkdir(parents=True)
     rc, out = tools.report('资料', tmp, folder)
@@ -289,7 +289,7 @@ def job_supplement(job):
         p.unlink(missing_ok=True)
     count = {k: sum(1 for x in items if x['类别'] == k) for k in KINDS}
     job.info('新资料对照完：%s；要改 %d 个文件' % ('、'.join('%s %d 条' % kv for kv in count.items()), len(files)))
-    return {'新资料': st['新资料'], '变化': count, '要改': files, '预计美元': round(sum(data['预计'].values()), 2),
+    return {'新资料': st['新资料'], '没转': st.get('没转', []), '变化': count, '要改': files, '预计美元': round(sum(data['预计'].values()), 2),
             '下一步': '到项目页看一遍变化，勾掉不要的，点“按这些改”' if items else '新资料和事实库没有出入，不用改'}
 
 

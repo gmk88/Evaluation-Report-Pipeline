@@ -175,7 +175,7 @@ def api_job_get(jid):
     return d                              # 10 分钟没动静的记录，jobs.Manager.get 已经改成“中断”
 
 
-AGAIN = ('新报告', '事实库', '补资料', '按新资料改')    # 能“接着做”的任务：做完的步骤有记录，不重做（别的任务重新开始就行）
+AGAIN = ('新报告', '事实库', '补资料', '按新资料改', '类比资料')    # 能“接着做”的任务：做完的步骤有记录，不重做（别的任务重新开始就行）
 
 
 def api_job_again(jid):
@@ -187,7 +187,7 @@ def api_job_again(jid):
     if d.get('状态') not in ('失败', '中断', '已取消'):
         raise ApiError(400, '这个任务还在做' if d.get('状态') in ('进行', '等待') else '这个任务已经做完了，不用接着做')
     P = {k: v for k, v in P.items() if isinstance(k, str) and not k.startswith('_')}
-    if kind in ('新报告', '补资料'):
+    if kind in ('新报告', '补资料', '类比资料'):
         title, params, root = build_job(kind, P, d.get('项目'), resume=True)
     else:
         title, params, root = build_job(kind, P, d.get('项目'))
@@ -258,6 +258,12 @@ def _sp():
     """补充资料的流程（用到时才导入：流程出问题不影响网页别的部分）。"""
     from .flows import supplement
     return supplement
+
+
+def _ap():
+    """补类比资料的流程（同上，用到时才导入）。"""
+    from .flows import analog
+    return analog
 
 
 def _materials(raw, root, resume=False):
@@ -347,6 +353,17 @@ def build_job(kind, P, project, resume=False):
         if not given and not (resume and (root / '资料' / _sp().DIR / '进行.json').is_file()):
             raise ApiError(400, '先选要补充的资料')
         return '补充资料', {'资料': given, '说明': _text(P.get('说明'), '说明', 500)}, str(root)
+    if kind == '类比资料':
+        root = _project_root(project or P.get('项目'))
+        if not _ap()._ch3(root):
+            raise ApiError(400, '这份报告没有“类比企业（项目）调查与分析”这一章（用的是风险评估法），类比资料用不上')
+        given = _materials(P.get('资料'), root, resume)
+        if not given and not (resume and _ap().unfinished(root)):
+            raise ApiError(400, '先选类比项目的资料')
+        params = {'资料': given, '说明': _text(P.get('说明'), '说明', 500)}
+        if resume:
+            params['接着做'] = True
+        return '补类比资料', params, str(root)
     if kind == '按新资料改':
         root = _project_root(project or P.get('项目'))
         data = _sp().pending(root)
