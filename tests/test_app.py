@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app import cli, config, flows, jobs, llm, rules, tools  # noqa: E402
-from app.flows import common, distill, facts, new, review, revise, supplement  # noqa: E402
+from app.flows import analog, common, distill, facts, new, review, revise, supplement  # noqa: E402
 
 SRC = ROOT / '_试跑' / '新材料副本'
 TMP = Path(tempfile.mkdtemp(prefix='rp_app_test_')).resolve()
@@ -79,7 +79,7 @@ class FakeModel:
 
     def __call__(self, job, label, system, content, tries=2, **kw):
         with _mu:
-            self.calls.append({'标签': label, 'schema': kw.get('schema'), '内容': content})
+            self.calls.append({'标签': label, 'schema': kw.get('schema'), '内容': content, '参数': kw})
         for prefix, fn in self.handlers:
             if label.startswith(prefix):
                 return copy.deepcopy(fn(label=label, content=content, schema=kw.get('schema')))
@@ -483,6 +483,19 @@ class T03_结构化输出加序号(Base):
         self.assertEqual(llm._unkeyed('01字'), '01字')
         self.assertEqual(llm._unkeyed({'12': 1, '1a': 2}), {'12': 1, '1a': 2})   # 只有两位数字的键不去成空键
 
+    def test_结果照schema粗查(self):
+        for name, s in {**SCHEMAS, **DISTILL}.items():
+            self.assertEqual(llm._misfit(_sample(s), s), '', name)       # 照 schema 出的都放过
+        ok = {'意见': [{'行': 27, '级别': '必改', '问题': 'q', '依据': 'K1', '原文': 'a', '新文': 'b'}]}
+        self.assertEqual(llm._misfit(ok, review.REVIEW), '')
+        self.assertEqual(llm._misfit({'意见': []}, review.REVIEW), '')
+        # 11-03 田林审第1章：中转回了光秃秃的数组，键名也不对（“行号”，还是文字）
+        bare = [{'行号': '27', '级别': '必改', '问题': 'q', '依据': 'K1', '原文': 'a', '新文': 'b'}]
+        self.assertIn('数组', llm._misfit(bare, review.REVIEW))
+        self.assertIn('缺“行”', llm._misfit({'意见': bare}, review.REVIEW))
+        self.assertIn('不在可选值', llm._misfit({'意见': [dict(ok['意见'][0], 级别='必须改')]}, review.REVIEW))
+        self.assertIn('整数', llm._misfit({'意见': [dict(ok['意见'][0], 行=True)]}, review.REVIEW))
+
 
 def _lock(root):
     return Path(root) / jobs.LOCK_NAME
@@ -672,6 +685,9 @@ class T05_命令行参数(Base):
         self.assertEqual(self.job('事实库', '/tmp/甲'), ('事实库', '事实库', {}, '/tmp/甲'))
         self.assertEqual(self.job('提炼标准', '--只做', '口径', '补漏'), ('提炼标准', '提炼标准', {'只做': ['口径', '补漏']}, None))
         self.assertEqual(self.job('自测', '--秒', '5', '--失败'), ('自测', '自测', {'秒': 5, '失败': True}, None))
+        k, title, p, proj = self.job('类比资料', '/tmp/甲', '--资料', TMP / '控评.pdf', '--说明', '古交正沟控评')
+        self.assertEqual((k, title, proj, p), ('类比资料', '补类比资料', '/tmp/甲', {'资料': [str((TMP / '控评.pdf').resolve())], '说明': '古交正沟控评'}))
+        self.assertTrue(self.job('类比资料', '/tmp/甲', '--接着做')[2]['接着做'])
 
     def test_main_跑自测(self):
         import contextlib
@@ -902,7 +918,8 @@ class T08_审稿走一遍(Base):
         FAKE.reset(('审 ', lambda **k: {'意见': ops}))
         job = jobs.Job('审稿', '审稿', {'章': '07'}, root)
         out = review.run(job, root, modify=True, chapters='07', focus='', publish=False)
-        self.assertEqual([x for x in FAKE.labels() if not x.startswith('清零')], ['审 ' + f.name])
+        self.assertEqual(sorted(x for x in FAKE.labels() if not x.startswith('清零')),
+                         sorted('审 %s·%s' % (f.name, n) for n, _, _ in review.PASSES))       # 分几遍审，三遍报的同一处只算一条
         call = FAKE.calls[0]
         self.assertIs(call['schema'], review.REVIEW)
         self.assertIn('%d\t%s' % (no, text0.split('\n')[no - 1]), call['内容'])                                   # 带行号的正文发过去了
@@ -921,6 +938,31 @@ class T08_审稿走一遍(Base):
         self.assertEqual(out['记录'], str(root / '审查' / '审稿记录'))
         self.assertTrue(Path(out['备份']).is_dir())
         self.assertIn('审了 1 个文件：必改 1 条、建议 1 条，改了 1 处', tools.read(root / '输出' / '交稿说明.md'))
+
+    def test_分遍审_各遍只带自己的R_一遍没成照用别的遍(self):
+        root = project('t08_分遍')
+        f = ch07(root)
+        text0 = tools.read(f)
+        fixed = SENT[:-1] + '（测试改动）。'
+        names = [n for n, _, _ in review.PASSES]
+
+        def fake(label, content, **k):
+            if label.endswith(names[0]):
+                raise llm.CallError('结果格式不对')
+            if label.endswith(names[1]):
+                return {'意见': [{'行': 2, '级别': '建议', '问题': '判定', '依据': 'R7', '原文': SENT, '新文': fixed}]}
+            return {'意见': [{'行': 2, '级别': '必改', '问题': '名称', '依据': 'R2', '原文': SENT, '新文': fixed}]}
+        FAKE.reset(('审 ', fake))
+        out = review.run(jobs.Job('审稿', '审稿', {}, root), root, modify=True, chapters='07')
+        self.assertEqual((out['必改'], out['建议'], out['已改']), (1, 0, 1))                 # 同一处两遍都报：留必改那条
+        self.assertEqual(out['没审全'], ['%s（%s 没审）' % (f.name, names[0])])
+        self.assertEqual(tools.read(f), text0.replace(SENT, fixed, 1))
+        self.assertIn('重复', tools.read(root / '审查' / '审稿记录' / f.name))
+        self.assertEqual(review._sections('# x\n\n## R1 甲\n- a\n\n## R2 乙\n- b\n\n## R10 丙\n- c\n', (2, 10)),
+                         '## R2 乙\n- b\n\n\n## R10 丙\n- c\n')
+        FAKE.reset(('审 ', lambda **k: (_ for _ in ()).throw(llm.CallError('都不行'))))
+        out = review.run(jobs.Job('审稿', '审稿', {}, root), root, modify=False, chapters='07')
+        self.assertEqual((out['审了'], out['没审成']), (0, [f.name]))                         # 几遍都没成：这章算没审成
 
     def test_说查不到的_资料里有就不改(self):
         # 11-01 第二次试审：事实库不摘电气内容，审稿把可研明写的“金属铠装”当成查不到删了
@@ -1126,6 +1168,75 @@ class T03b_真call发出带序号的schema(Base):
         self.assertEqual((row['步骤'], row['输入'], row['输出']), ('审 07_甲.md', 100, 20))
         self.assertTrue(_inside(llm.USAGE))
 
+    def test_结果格式不对_算没成_可以重来(self):
+        # 以前这样的结果直接交给审稿那一步，一用就报错，这章就没审，也不重来
+        bare = [{'行号': '27', '级别': '必改', '问题': 'q', '依据': 'K1', '原文': 'a', '新文': 'b'}]
+        fake = _FakeClient(json.dumps(bare, ensure_ascii=False))
+        job = jobs.Job('审稿', '审稿', {}, None)
+        with mock.patch.object(llm, 'client', lambda cfg=None: fake), self.assertRaises(llm.CallError) as cm:
+            _saved[(llm, 'call')](job, '审 01_总论.md', '系统', '内容', schema=review.REVIEW)
+        self.assertTrue(cm.exception.retry)
+        self.assertIn('结果格式不对', str(cm.exception))
+
+
+class _StuckStream(_FakeStream):
+    """先来一个事件，然后一直不来（中转只发心跳）；被关掉后迭代报错，像接口库那样。"""
+
+    def __init__(self):
+        super().__init__('')
+        self.closed = threading.Event()
+
+    def __iter__(self):
+        yield mock.Mock(type='message_start')
+        self.closed.wait(10)
+        raise RuntimeError('stream closed')
+
+    def close(self):
+        self.closed.set()
+
+
+class T03e_光有心跳不来内容(Base):
+    def test_看门狗关流_算中途断了可以重来(self):
+        # 11-05 田林专篇审稿：中转断线后有两遍挂了 70 多分钟
+        stuck = _StuckStream()
+        fake = _FakeClient('')
+        fake.stream = lambda **kw: stuck
+        job = jobs.Job('审稿', '审稿', {}, None)
+        t0 = time.time()
+        with mock.patch.object(llm, 'client', lambda cfg=None: fake), mock.patch.object(llm, 'IDLE', 0.3), \
+                self.assertRaises(llm.CallError) as cm:
+            _saved[(llm, 'call')](job, '审 04_3.md', '系统', '内容', schema=review.REVIEW)
+        self.assertLess(time.time() - t0, 5)
+        self.assertTrue(cm.exception.retry)
+        self.assertIn(llm.CUT, str(cm.exception))
+
+    def test_正常回答不受影响(self):
+        fake = _FakeClient(json.dumps(_as_model(_sample(llm._keyed(review.REVIEW))), ensure_ascii=False))
+        job = jobs.Job('审稿', '审稿', {}, None)
+        with mock.patch.object(llm, 'client', lambda cfg=None: fake), mock.patch.object(llm, 'IDLE', 0.3):
+            self.assertEqual(_saved[(llm, 'call')](job, '审 07.md', '系统', '内容', schema=review.REVIEW), _sample(review.REVIEW))
+
+
+class T03d_跨章改动按文件名对(Base):
+    def test_写成正文斜杠文件名也改(self):
+        # 11-01 起的审稿：模型把文件写成“正文/07_甲.md”，跟正文文件名对不上，跨章一致一处也没改
+        import tempfile
+        got = []
+        r = {'改动': [{'文件': '正文/07_甲.md', '原文': '甲', '新文': '乙', '说明': 's'},
+                      {'文件': '附件/x.md', '原文': '甲', '新文': '乙', '说明': 's'}], '没改': []}
+        job = jobs.Job('审稿', '审稿', {}, None)
+        with mock.patch.object(llm, 'call_retry', lambda *a, **k: r), \
+                mock.patch.object(tools, 'body_files', lambda root: ['05_乙.md', '07_甲.md']), \
+                mock.patch.object(tools, 'read', lambda p: '甲'), mock.patch.object(tools, 'numbered', lambda t: t), \
+                mock.patch.object(tools, 'write', lambda *a, **k: None), \
+                mock.patch.object(common, 'fact_docs', lambda root: []), mock.patch.object(common, 'names_table', lambda root: ''), \
+                mock.patch.object(common, 'apply', lambda job, root, f, edits, label: (got.append(f), (len(edits), []))[1]), \
+                mock.patch.object(common, 'fix_errors', lambda *a, **k: None):
+            out = review.cross(job, tempfile.mkdtemp(), '类比法', True)
+        self.assertEqual(got, ['07_甲.md'])
+        self.assertEqual(out['改'], 1)
+        self.assertTrue(any('x.md 不是正文里的文件' in t for _, t in job.logs))
+
 
 class T03c_整次重来(Base):
     def test_call_retry_断流重来_拒答不重来(self):
@@ -1178,6 +1289,27 @@ class T03c_整次重来(Base):
                 self.assertRaises(llm.CallError):
             real(job, '审 05', 's', 'c')
         self.assertEqual(seen, ['审 05'])
+
+    def test_余额不够整个任务停下(self):
+        # 11-05 田林专篇：中转余额用完返回 403，清零、各章各遍照样一个个去试，日志刷了上百条
+        e = llm.CallError('x', fatal=True)
+        self.assertFalse(e.retry)
+        job = jobs.Job('审稿', '审稿', {}, None)
+        seen = []
+
+        def one(x):
+            seen.append(x)
+            if x == 'b':
+                raise llm.CallError('审 b：中转返回 403', fatal=True)
+            if x == 'c':
+                raise llm.CallError('审 c：中途断了')
+            return x
+
+        with self.assertRaises(llm.CallError) as cm:
+            review.pmap(job, one, ['a', 'b', 'c'])
+        self.assertTrue(cm.exception.fatal)
+        self.assertTrue(any('审 c' in t for _, t in job.logs))     # 不是余额问题的照常记日志
+        self.assertEqual(review.pmap(job, lambda x: x, ['a']), ['a'])
 
     def test_等着重来时取消就停(self):
         real = _saved[(llm, 'call_retry')]
@@ -1326,6 +1458,142 @@ class T08c_事实库接着做(Base):
         res = self.build(root, long)
         self.assertEqual(len(FAKE.labels()), n - 1)                               # 从断的那一批接着核
         self.assertEqual(res['补充'], 1)                                          # 每批都补同一条，只补一次
+
+
+class T08d_摘事实写不完(Base):
+    """11-06 新材料 7 万字、11-07 200MW 22.6 万字一次摘事实：设计专篇 23 节写不完（截断），整个任务停下。"""
+    GOOD = T08c_事实库接着做.GOOD
+
+    def _design(self, name):
+        root = project(name)
+        (root / '资料' / '事实库.md').unlink(missing_ok=True)
+        info = root / '项目信息.md'
+        tools.write(info, tools.read(info).replace('# 项目信息', '# 项目信息\n\n- 报告类型：设计专篇', 1))
+        self.assertTrue(tools.is_design(root))
+        return root
+
+    @staticmethod
+    def cut(label):
+        raise llm.CallError('%s：输出太长被截断' % label, retry=False)
+
+    def test_一次写不完_改成分批摘再汇总(self):
+        root = self._design('t08d_分批')
+        src = [('初设.txt', '第一章\n' + '设备甲 3 台。\n' * 3000)]          # 不到一次摘的上限
+        self.assertLessEqual(len(src[0][1]), facts.DESIGN_ONE_CALL)
+        FAKE.reset(('摘事实 第', lambda **k: '## 项目概况\n- 甲（出处：初设 1.1）\n'),
+                   ('摘事实', lambda label, **k: self.cut(label)),
+                   ('汇总事实库', lambda **k: '<<<事实库>>>\n' + self.GOOD + '<<<口径>>>\n# 口径\n'),
+                   ('核对事实库', lambda **k: {'补充': [], '更正': []}))
+        with mock.patch.object(tools, 'source_texts', lambda r: src):
+            res = facts.build(jobs.Job('事实库', '事实库', {}, root), root)
+        labels = FAKE.labels()
+        self.assertEqual(labels[0], '摘事实')
+        self.assertGreaterEqual(sum(x.startswith('摘事实 第') for x in labels), 2)   # 单份资料也切成至少两批
+        self.assertIn('汇总事实库', labels)
+        self.assertEqual(res['事实'], 25)
+
+    def test_一批写不完_切两半重摘_切到底还不行就停(self):
+        root = self._design('t08d_切半')
+        src = [('初设.txt', ''.join('第%d节\n' % i + '设备%d 台。\n' % i * 40 for i in range(900)))]
+        self.assertGreater(len(src[0][1]), facts.DESIGN_ONE_CALL)
+        seen = []
+
+        def batch(label, content, **k):
+            seen.append((label, len(content)))
+            if label == '摘事实 第1批':
+                self.cut(label)                       # 第1批写不完：切两半各摘一遍
+            return '## 项目概况\n- %s（出处：初设）\n' % label
+
+        FAKE.reset(('摘事实 第', batch),
+                   ('汇总事实库', lambda **k: '<<<事实库>>>\n' + self.GOOD + '<<<口径>>>\n# 口径\n'),
+                   ('核对事实库', lambda **k: {'补充': [], '更正': []}))
+        with mock.patch.object(tools, 'source_texts', lambda r: src):
+            facts.build(jobs.Job('事实库', '事实库', {}, root), root)
+        labels = [x for x, _ in seen]
+        self.assertIn('摘事实 第1批-1', labels)
+        self.assertIn('摘事实 第1批-2', labels)
+        first = dict(seen)['摘事实 第1批']
+        self.assertLess(dict(seen)['摘事实 第1批-1'], first)            # 切开后一次给的资料少了
+        merged = next(c['内容'] for c in FAKE.calls if c['标签'] == '汇总事实库')
+        self.assertIn('摘事实 第1批-1', merged)                         # 两半的摘录都进了汇总
+        self.assertIn('摘事实 第1批-2', merged)
+        # 每一层都写不完：切到 SPLIT_DEPTH 层还不行，报错停下（不无限切）
+        root2 = self._design('t08d_切到底')
+        FAKE.reset(('摘事实 第', lambda label, **k: self.cut(label)))
+        with mock.patch.object(tools, 'source_texts', lambda r: src), self.assertRaises(llm.CallError):
+            facts.build(jobs.Job('事实库', '事实库', {}, root2), root2)
+        self.assertLessEqual(max(x.count('-') for x in FAKE.labels()), facts.SPLIT_DEPTH)
+
+    def test_汇总写不完_按节分组写_口径单独写(self):
+        root = self._design('t08d_汇总')
+        src = [('初设.txt', ''.join('第%d节\n' % i + '设备%d 台。\n' % i * 40 for i in range(900)))]
+        heads = facts.heads_of(tools.report_type(root))
+
+        def group(label, content, **k):
+            # 回答只含任务里列出的几节；模型把同一节写两遍、带“# 事实库”标题时，程序去重
+            hs = [h.strip()[3:] for h in content.split('\n') if h.startswith('  ## ')]
+            one = ''.join('## %s\n- 条（出处：初设 1）\n' % h for h in hs)
+            return '<<<事实库>>>\n# 事实库\n' + one + one
+        FAKE.reset(('摘事实 第', lambda **k: '# 事实库\n## 项目概况\n- 甲（出处：初设 1.1）\n' * 800),
+                   ('汇总事实库 口径', lambda **k: '<<<口径>>>\n# 口径\n## 说法不一\n'),
+                   ('汇总事实库 ', group),
+                   ('核对事实库', lambda **k: {'补充': [], '更正': []}))
+        with mock.patch.object(tools, 'source_texts', lambda r: src):
+            res = facts.build(jobs.Job('事实库', '事实库', {}, root), root)
+        fact_md = tools.read(root / '资料' / '事实库.md')
+        self.assertEqual(res['事实'], len(heads))
+        self.assertTrue(all(fact_md.count('## ' + h + '\n') == 1 for h in heads))   # 每节只一次
+        self.assertEqual(fact_md.count('# 事实库'), 1)
+        self.assertIn('## 说法不一', tools.read(root / '资料' / '口径.md'))
+        groups = [c for c in FAKE.calls if c['标签'].startswith('汇总事实库 ') and '口径' not in c['标签']]
+        self.assertEqual(len(groups), -(-len(heads) // facts.MERGE_GROUP))
+        self.assertTrue(all(c['参数'].get('max_tokens') == facts.MERGE_TOKENS for c in groups))
+        self.assertIsNone(next(c for c in FAKE.calls if c['标签'] == '汇总事实库 口径')['参数'].get('max_tokens'))   # 口径表思考多，用默认上限
+        kj = next(c['内容'] for c in FAKE.calls if c['标签'] == '汇总事实库 口径')
+        self.assertIn('第1批摘录', kj)                                           # 口径那次看全部摘录
+        self.assertNotIn('\n# 事实库', kj)                                       # 输入里各批摘录的“# 事实库”标题去掉了
+
+    def test_汇总口径没写完_接着做不重写各组(self):
+        root = self._design('t08d_汇总续')
+        src = [('初设.txt', ''.join('第%d节\n' % i + '设备%d 台。\n' % i * 40 for i in range(900)))]
+
+        def group(label, content, **k):
+            hs = [h.strip()[3:] for h in content.split('\n') if h.startswith('  ## ')]
+            return '<<<事实库>>>\n' + ''.join('## %s\n- 条（出处：初设 1）\n' % h for h in hs)
+        ok = {'on': False}
+
+        def kj(label, **k):
+            if not ok['on']:
+                raise llm.CallError('%s：输出太长被截断' % label, retry=False)
+            return '<<<口径>>>\n# 口径\n## 说法不一\n'
+        FAKE.reset(('摘事实 第', lambda **k: '## 项目概况\n- 甲（出处：初设 1.1）\n' * 800),
+                   ('汇总事实库 口径', kj), ('汇总事实库 ', group), ('核对事实库', lambda **k: {'补充': [], '更正': []}))
+        with mock.patch.object(tools, 'source_texts', lambda r: src):
+            with self.assertRaises(llm.CallError):
+                facts.build(jobs.Job('事实库', '事实库', {}, root), root)
+            n = sum(c['标签'].startswith('汇总事实库 ') and '口径' not in c['标签'] for c in FAKE.calls)
+            self.assertGreater(n, 1)
+            ok['on'] = True
+            facts.build(jobs.Job('事实库', '事实库', {}, root), root)
+        again = sum(c['标签'].startswith('汇总事实库 ') and '口径' not in c['标签'] for c in FAKE.calls)
+        self.assertEqual(again, n)                                            # 第二次没重写各组
+        self.assertIn('## 说法不一', tools.read(root / '资料' / '口径.md'))
+        self.assertEqual(list((root / '资料' / facts.DRAFT).glob('汇总_*.md')), [])   # 写好事实库后中间结果删掉
+
+    def test_补摘只带节标题_不带整份事实库(self):
+        root = self._design('t08d_补摘')
+        fact_md = '# 事实库\n## 项目概况\n' + ''.join('- 很长的事实第%d条，写着设备型号和参数（出处：可研 1.%d）\n' % (i, i) for i in range(300))
+        tools.write(root / '资料' / '事实库.md', fact_md)
+        src = [('初设.txt', '第五章 暖通\n' + '35 kV配电室事故通风 12 次/h。\n' * 50)]
+        FAKE.reset(('补摘事实', lambda **k: '## 暖通设计（各房间、舱体的通风方式、换气次数、风机型号和风量、事故通风、空调）\n'
+                                              '- 35 kV配电室事故通风 12 次/h（出处：初设 5.1）\n'))
+        with mock.patch.object(tools, 'source_texts', lambda r: src):
+            res = facts.build_extra(jobs.Job('专篇', '专篇', {}, root), root, facts.HEADS_DESIGN)
+        sent = FAKE.calls[0]['内容']
+        self.assertIn('项目概况（300 条）', sent)
+        self.assertNotIn('很长的事实第200条', sent)                         # 不带整份事实库
+        self.assertEqual(res['条数'], 1)
+        self.assertIn('35 kV配电室事故通风 12 次/h', tools.read(root / '资料' / '事实库.md'))
 
 
 class T09b_新报告接着做(Base):
@@ -1865,6 +2133,725 @@ class T11_补充资料(Base):
         supplement._register(job, root, '1101-2300', [('初设.txt', str(root / '资料' / '原件' / '补充_1101-2300' / '初设.txt'), '初设原文')])
         self.assertEqual(dict(tools.source_texts(root)), {'可研.docx': '可研原文', '初设.txt': '初设原文'})
         self.assertFalse((root / tools.SETTINGS_FILE).exists())
+
+
+class T13_补类比资料(Base):
+    """类比项目（别的项目）的报告：不当本项目资料，摘成类比事实、重写第3章、改引用第3章的地方。"""
+    ANALOG = '古交正沟控评.txt'
+    OLD = '结合第3章类比检测结果（见表3.9-9）。'
+    NEW = '结合第3章类比检测结果（见表3.3-2）。'
+
+    def setUp(self):
+        super().setUp()
+        self.fail_on = set()
+
+    def make(self, name, misfiled=True):
+        """类比法的项目：第3章换成类比法骨架；第4章引用第3章，第5章不引用。misfiled：以前当本项目资料补进来过一次。"""
+        root = project(name)
+        for p in (root / '正文').glob('*.md'):
+            if not p.name.startswith(('01', '02_1', '04_1', '05')):
+                p.unlink()
+        shutil.copy2(config.ROOT / 'templates' / '项目骨架' / '正文' / '03_类比企业（项目）调查与分析.md', root / '正文')
+        f4 = next((root / '正文').glob('04_1*.md'))
+        tools.write(f4, tools.read(f4).rstrip('\n') + '\n\n' + self.OLD + '\n')
+        f5 = next((root / '正文').glob('05*.md'))
+        tools.write(f5, analog.RE_REF.sub('本项目', tools.read(f5)))
+        d = root / '资料'
+        tools.write(d / '原件' / '可研.txt', '第一章 总论\n本项目为风电场。\n' * 10)
+        if misfiled:
+            blocks = [{'文件': '001_可研.txt', '来源': str(d / '原件' / '可研.txt'), '字数': 10, '标题': []},
+                      {'文件': '补充/1102-1726_01_古交正沟控评.txt', '来源': str(d / '原件' / '补充_1102-1726' / self.ANALOG), '字数': 10, '标题': []}]
+            tools.write(d / '文本' / '索引.json', json.dumps({'块': blocks, '跳过': []}, ensure_ascii=False))
+            tools.write(d / '文本' / '001_可研.txt', '可研原文')
+            tools.write(d / '文本' / '补充' / '1102-1726_01_古交正沟控评.txt', '控评原文（误记）')
+            tools.write(d / '原件' / '补充_1102-1726' / self.ANALOG, '控评原文（误记）')
+            tools.write(d / '事实片段' / '补资料' / '待确认.json', json.dumps({'新资料': [self.ANALOG], '变化': []}, ensure_ascii=False))
+        src = TMP / (name + '_类比资料')
+        tools.write(src / self.ANALOG, '9.1.2 职业健康检查结果\n本次体检应检 4 人，实检 4 人。\n6.5 检测结果\n风机机舱噪声 82.3 dB(A)，合格。\n' * 20)
+        (src / '体检报告.pdf').write_bytes(b'%PDF-1.4\n%%EOF\n')
+        return root, [str(src / self.ANALOG), str(src / '体检报告.pdf')]
+
+    def handlers(self, root):
+        skel = tools.read(root / '正文' / '03_类比企业（项目）调查与分析.md')
+        body = re.sub(r'【待填[^】]*】', '古交正沟风电二期项目', re.sub(r'<!-- 状态：.*?-->\s*', '', skel, flags=re.S))
+
+        def ref(label, **k):
+            f = label[len('改引用 '):]
+            if f in self.fail_on:
+                raise llm.CallError(label + '：' + llm.CUT)
+            hit = f.startswith('04_1') and self.OLD in tools.read(root / '正文' / f)
+            return {'改动': [{'原文': self.OLD, '新文': self.NEW, '说明': ''}] if hit else [], '跳过': []}
+
+        return (('摘类比事实', lambda **k: '# 类比事实\n\n## 资料\n\n- 古交正沟控评报告 XLH-KP-2025-D008（出处：控评 封面）\n\n'
+                                        '## 职业健康检查\n\n- 应检 4 人，实检 4 人（出处：控评 9.1.2）\n'),
+                ('写 03_', lambda **k: '<<<正文>>>\n%s\n<<<可研没有>>>\n无\n' % body.strip()),
+                ('改引用 ', ref))
+
+    def test_挪走误记的_摘类比事实_写第3章_改引用(self):
+        root, given = self.make('t13_a')
+        FAKE.reset(*self.handlers(root))
+        with mock.patch.object(tools, 'sample_for', return_value=None):
+            res = analog.job_analog(jobs.Job('类比资料', '补类比资料', {'资料': given, '说明': '控评'}, root))
+        refs = sorted(f for f in tools.body_files(root) if f != '03_类比企业（项目）调查与分析.md' and analog.RE_REF.search(tools.read(root / '正文' / f)))
+        labels = [x for x in FAKE.labels() if not x.startswith('清零')]
+        self.assertEqual(labels[:2], ['摘类比事实', '写 03_类比企业（项目）调查与分析.md'])
+        self.assertEqual(sorted(labels[2:]), ['改引用 ' + f for f in refs])
+        self.assertTrue(any(f.startswith('04_1') for f in refs) and not any(f.startswith('05') for f in refs), refs)
+        write3 = next(c['内容'] for c in FAKE.calls if c['标签'].startswith('写 03_'))
+        self.assertIn('类比事实.md（类比项目的，不是本项目的事实）', write3)
+        self.assertIn('第3章里类比项目的内容只取“类比事实.md”', write3)
+        ref4 = next(c for c in FAKE.calls if c['标签'].startswith('改引用 04_1'))
+        self.assertIn('刚写好的第3章', ref4['内容'])
+        self.assertIn('拿不准、要用户定的，写进“跳过”', ref4['内容'])       # 田林那次第4章没说清，模型改用文字反问，两次不是 JSON
+        self.assertIs(ref4['schema'], common.EDITS)
+        self.assertEqual((ref4['参数'].get('effort'), ref4['参数'].get('max_tokens')), ('medium', analog.REF_MAX))
+        self.assertNotIn('【待填', tools.read(root / '正文' / '03_类比企业（项目）调查与分析.md'))
+        self.assertIn(self.NEW, tools.read(next((root / '正文').glob('04_1*.md'))))
+        # 以前当本项目资料记进来的那份挪走：索引里没有了，文字、原件、改之前的索引在 资料/类比/移出/ 里；那次空的待确认清单丢掉
+        idx = json.loads(tools.read(root / '资料' / '文本' / '索引.json'))
+        self.assertEqual([b['文件'] for b in idx['块']], ['001_可研.txt'])
+        out = tools.analog_dir(root) / '移出'
+        self.assertTrue(list(out.glob('*/文本/补充/1102-1726_01_古交正沟控评.txt')) and list(out.glob('*/原件/补充_1102-1726/' + self.ANALOG)))
+        self.assertTrue(list(out.glob('*/索引.json')))
+        self.assertFalse((root / '资料' / '原件' / '补充_1102-1726').exists())
+        self.assertIsNone(supplement.pending(root))
+        self.assertEqual([n for n, _ in tools.source_texts(root)], ['可研.txt'])
+        self.assertEqual([n for n, _ in tools.analog_texts(root)], [self.ANALOG])
+        self.assertIn('类比事实.md（类比项目的，不是本项目的事实）', '\n'.join(common.fact_docs(root)))
+        self.assertEqual((res['类比资料'], res['移出'], res['第3章']['待填']), ([self.ANALOG], [self.ANALOG], 0))
+        self.assertTrue(res['没转'] and res['没转'][0].startswith('体检报告.pdf'), res['没转'])
+        self.assertTrue(Path(res['备份']).is_dir())
+        self.assertIn('## 补类比资料', tools.read(root / '输出' / '交稿说明.md'))
+        # 以后整份重转资料：资料/类比/ 里的不当本项目资料
+        rc, _out = tools.report('资料', root)
+        self.assertEqual(rc, 0)
+        self.assertEqual([n for n, _ in tools.source_texts(root)], ['可研.txt'])
+
+    def test_改引用断了_接着做只补改那个文件(self):
+        root, given = self.make('t13_b', misfiled=False)
+        f4 = next(f for f in tools.body_files(root) if f.startswith('04_1'))
+        self.fail_on = {f4}
+        FAKE.reset(*self.handlers(root))
+        with mock.patch.object(tools, 'sample_for', return_value=None):
+            with self.assertRaisesRegex(RuntimeError, '点“接着做”只补改这几个'):
+                analog.job_analog(jobs.Job('类比资料', '补类比资料', {'资料': given}, root))
+            self.assertTrue(analog.unfinished(root))
+            self.fail_on = set()
+            FAKE.reset(*self.handlers(root))
+            res = analog.job_analog(jobs.Job('类比资料', '补类比资料', {'资料': [], '接着做': True}, root))
+        self.assertEqual([x for x in FAKE.labels() if not x.startswith('清零')], ['改引用 ' + f4])   # 不重摘、不重写第3章
+        self.assertIn(self.NEW, tools.read(root / '正文' / f4))
+        self.assertFalse(analog.unfinished(root))
+        self.assertEqual(res['引用'][f4], 1)
+
+    def test_风险评估法的报告_扫描件(self):
+        root = project('t13_c')
+        with self.assertRaisesRegex(RuntimeError, '用不上'):
+            analog.job_analog(jobs.Job('类比资料', '补类比资料', {'资料': [str(TMP / '随便.txt')]}, root))
+        self.assertFalse(tools.analog_dir(root).exists())
+        root, _ = self.make('t13_d', misfiled=False)
+        scan = TMP / 't13_d_扫描.pdf'
+        scan.write_bytes(b'%PDF-1.4\n%%EOF\n')
+        with self.assertRaisesRegex(RuntimeError, '没转出文字'):
+            analog.job_analog(jobs.Job('类比资料', '补类比资料', {'资料': [str(scan)]}, root))
+        self.assertFalse((tools.analog_dir(root) / analog.STATE).exists())
+        self.assertEqual(tools.analog_texts(root), [])
+
+
+from app.tools import doctype  # noqa: E402
+
+TL_PRE = Path(os.environ.get('DC_TL_PRE') or Path(os.sep, 'tmp', 'dc-build', 'tl_pre'))      # 田林预评价的复制品（不含资料/原件），没有时专篇新报告那一项跳过
+
+
+def _design(name, pre=None):
+    """从设计专篇骨架建一个临时专篇项目（主报告＋附件册）；给了 pre 就在 流水线设置.json 记上承接的预评价。"""
+    dst = TMP / name
+    shutil.copytree(doctype.skeleton(doctype.DESIGN), dst)
+    if pre:
+        tools.write(dst / tools.SETTINGS_FILE, json.dumps({'预评价': str(pre)}, ensure_ascii=False))
+    return dst.resolve()
+
+
+class T14_设计专篇(Base):
+    def test_类型_没写的是预评价_附件册取主报告(self):
+        root = _design('t14_type')
+        self.assertEqual((tools.report_type(root), tools.report_type(root / '附件册')), (doctype.DESIGN, doctype.ANNEX))
+        self.assertEqual(tools.report_type(BASE), doctype.PRE)                      # 老项目没写“报告类型”
+        self.assertEqual(tools.method_of(root), '')                                 # 专篇不回落成类比法
+        self.assertEqual(doctype.main_root(root / '附件册'), root)
+        self.assertEqual(doctype.volumes(root), [root, root / '附件册'])
+        tools.write(root / '资料' / '事实库.md', '# 事实库\n\n## 项目概况\n- 甲\n')
+        self.assertEqual([n for n, _ in tools.facts(root / '附件册')], ['事实库.md'])   # 附件册没有自己的资料
+
+    def test_整章断流_按节分两半写_半截还断再分(self):
+        root = _design('t14_split')
+        fname = '04_2_防护设施设计.md'
+        skel = tools.read(root / '正文' / fname)
+        units = new._units(skel)
+        self.assertGreaterEqual(len(units), 4)
+        tools.write(root / '资料' / '事实库.md', '# 事实库\n\n## 项目概况\n- 甲\n')
+
+        def body(label, content, **k):
+            if label == '写 ' + fname:                                          # 整章：断流
+                raise llm.CallError('%s：%s（收到 11537 字）' % (label, llm.CUT))
+            m = re.search(r'第(\d+)～(\d+)节', label)
+            lo, hi = int(m.group(1)), int(m.group(2))
+            if hi - lo + 1 > len(units) // 2 and lo == 1:                       # 前半整段也断一次：再对半分
+                raise llm.CallError('%s：%s' % (label, llm.CUT))
+            out = ('# 4 设计\n' if lo == 1 else '# 4 设计\n') + ''.join('%s\n- 第%d节内容%s\n' % (units[i][0], i + 1, '很长' * 400)
+                                                                   for i in range(lo - 1, hi))
+            return '<<<正文>>>\n' + out
+        FAKE.reset(('写 ', body), ('清零 ', lambda **k: {'改动': [], '跳过': []}))
+        res = new._write_design(jobs.Job('新报告', '新报告', {}, root), root, doctype.DESIGN, None, fname, [])
+        text = tools.read(root / '正文' / fname)
+        for i, (h, _) in enumerate(units):
+            self.assertEqual(text.count(h + '\n'), 1, h)                         # 每节一次
+            self.assertIn('第%d节内容' % (i + 1), text)
+        self.assertEqual(text.count('# 4 设计'), 1)                               # 后一段重复的文件标题去掉
+        labels = FAKE.labels()
+        self.assertTrue(any('第' in x and '～' in x for x in labels))
+        self.assertEqual(sum(x == '写 ' + fname for x in labels), 1)              # 整章只试一次就分半，没有白等第二次、第三次
+        self.assertGreater(res['字数'], 100)
+
+    def test_整章断流_一张大表按分组行拆_拼出的表不断(self):
+        root = _design('t14_table')
+        annex = root / '附件册'
+        fname = '05_设施清单核对.md'
+        skel = tools.read(annex / '正文' / fname)
+        units = new._units(skel)
+        self.assertGreaterEqual(len(units), 3)
+        self.assertTrue(all(u[0].startswith('|') for u in units))                 # 骨架只有一个“## 5.1”，按“一、二、三”分组行拆
+        tools.write(root / '资料' / '事实库.md', '# 事实库\n\n## 项目概况\n- 甲\n')
+        head = '# 附件5 设计文件职业病防护设施清单核对\n\n核对范围和方法。\n\n## 5.1 职业病防护设施逐项核对\n\n表5.1-1  职业病防护设施清单核对\n' \
+               '<!-- 表格 列宽=450,1500 字号=21 对齐=中,左 -->\n| 序号 | 设施 |\n|---|---|\n'
+
+        def body(label, content, **k):
+            if label == '写 附件册/' + fname:
+                raise llm.CallError('%s：%s（收到 17134 字）' % (label, llm.CUT))
+            m = re.search(r'第(\d+)～(\d+)分组', label)
+            self.assertIsNotNone(m, label)
+            lo, hi = int(m.group(1)), int(m.group(2))
+            rows = ''
+            for i in range(lo - 1, hi):
+                g = units[i][0].split('|')[1].strip()
+                rows += '| %s | < |\n| %d | %s |\n' % (g, i + 1, '内容' * 200)
+            # 后一段模型又写了表题、表头：程序去掉；表后的内容在最后一段
+            out = (head if lo == 1 else '表5.1-1  职业病防护设施清单核对\n| 序号 | 设施 |\n|---|---|\n') + rows
+            return '<<<正文>>>\n' + out + ('\n<!-- 纵向 -->' if hi == len(units) else '')
+        FAKE.reset(('写 ', body), ('清零 ', lambda **k: {'改动': [], '跳过': []}))
+        new._write_design(jobs.Job('新报告', '新报告', {}, annex), annex, doctype.ANNEX, None, fname, [])
+        text = tools.read(annex / '正文' / fname)
+        self.assertEqual(text.count('| 序号 | 设施 |'), 1)                           # 表头只一份
+        self.assertEqual(text.count('表5.1-1  职业病防护设施清单核对'), 1)
+        self.assertNotIn('|\n\n|', text)                                          # 表行之间没有空行，表不会断
+        for i, (h, _) in enumerate(units):
+            self.assertEqual(text.count(h.split('|')[1].strip()), 1)
+        self.assertEqual(text.count('<!-- 纵向 -->'), 1)
+        self.assertTrue(tools.parse_error(text, fname) in (None, ''))
+
+    def test_整章断流_骨架拆不开_整章再试一次(self):
+        root = _design('t14_nosplit')
+        fname = '02_工程分析资料.md'
+        tools.write(root / '附件册' / '正文' / fname, '# 附件2\n\n只有一节没有表。\n')
+        tools.write(root / '资料' / '事实库.md', '# 事实库\n\n## 项目概况\n- 甲\n')
+        n = {'k': 0}
+
+        def body(label, content, **k):
+            n['k'] += 1
+            if label == '写 附件册/' + fname:
+                raise llm.CallError('%s：%s' % (label, llm.CUT))
+            return '<<<正文>>>\n# 附件2\n\n' + '正文很长。' * 100
+        FAKE.reset(('写 ', body), ('清零 ', lambda **k: {'改动': [], '跳过': []}))
+        new._write_design(jobs.Job('新报告', '新报告', {}, root / '附件册'), root / '附件册', doctype.ANNEX, None, fname, [])
+        self.assertIn('（整章再试）', ''.join(FAKE.labels()))
+        self.assertEqual(n['k'], 2)
+
+    def test_写章模型只思考没写字_降档重写一次(self):
+        root = _design('t14_empty')
+        fname = '01_概述.md'
+        tools.write(root / '资料' / '事实库.md', '# 事实库\n\n## 项目概况\n- 甲\n')
+        seen = []
+
+        def body(label, content, **k):
+            seen.append(label)
+            return '' if '降档' not in label else '<<<正文>>>\n# 1 概述\n\n' + '正文很长。' * 300
+        FAKE.reset(('写 ', body), ('清零 ', lambda **k: {'改动': [], '跳过': []}))
+        res = new._write_design(jobs.Job('新报告', '新报告', {}, root), root, doctype.DESIGN, None, fname, [])
+        self.assertEqual(seen, ['写 ' + fname, '写 ' + fname + '（降档重写）'])        # 空回答不当成断流去拆，降档写一次就成
+        self.assertGreater(res['字数'], 300)
+
+    def test_写作先后_依赖对_没有环_附件册在主报告之后(self):
+        main = tools.body_files(doctype.skeleton(doctype.DESIGN))
+        annex = tools.body_files(doctype.skeleton(doctype.DESIGN) / '附件册')
+        self.assertTrue(main and annex)
+        deps = {f: doctype.deps_of(doctype.DESIGN, f, main) for f in main}
+        self.assertEqual(deps[next(f for f in main if f.startswith('02_1'))], [])
+        f45 = next(f for f in main if f.startswith('04_5'))
+        self.assertEqual(sorted(deps[f45]), sorted(f for f in main if f[:2] in ('02', '03') or f[:4] in ('04_1', '04_2', '04_3', '04_4')))
+        self.assertEqual(sorted(deps[next(f for f in main if f.startswith('01'))]), sorted(f for f in main if f[:2] != '01'))
+        for k in ('02', '03', '04_1', '04_2', '04_3', '04_4', '04_5', '05', '01'):    # 每个文件都有自己的键（注释吞掉键会退回到“04”或不等）
+            self.assertIn(k, doctype.DEPS[doctype.DESIGN])
+        self.assertEqual(sorted(deps[next(f for f in main if f.startswith('04_3'))]), sorted(f for f in main if f[:2] in ('02', '03')))
+        seen, left = [], dict(deps)
+        while left:                                                                # 拓扑排序排得完＝没有环
+            ready = [f for f, d in left.items() if all(x in seen for x in d)]
+            self.assertTrue(ready, '有环：%s' % left)
+            seen += ready
+            for f in ready:
+                del left[f]
+        # 附件册各文件等主报告全写好；册内只有附件4 等附件2（舱室净容积取表2.2-1）
+        self.assertTrue(all(doctype.deps_of(doctype.ANNEX, f, annex) == [] for f in annex if not f.startswith('04')))
+        self.assertEqual([x[:2] for x in doctype.deps_of(doctype.ANNEX, next(f for f in annex if f.startswith('04')), annex)], ['02'])
+        pre = ['01_总论.md', '08_职业卫生管理.md', '09_关键控制点.md', '10_补充建议.md', '11_结论与建议.md']
+        self.assertEqual(doctype.pre_files(doctype.DESIGN, f45, pre), pre[1:])                # 采纳情况给预评价第8～11章
+
+    def test_要点卡按类型(self):
+        d = config.STD / '设计专篇' / '各章要点'
+        tools.write(d / '04.md', '# 专篇第4章卡\n')
+        tools.write(d / '附件.md', '# 附件册的卡\n')
+        tools.write(config.STD / '各章要点' / '04.md', '# 预评价第4章卡\n')
+        self.assertEqual(common.card(doctype.DESIGN, '', '04_2_防护设施设计.md'), '# 专篇第4章卡\n')
+        self.assertEqual(common.card(doctype.ANNEX, '', '04_计算书.md'), '# 附件册的卡\n')
+        self.assertEqual(common.card(doctype.PRE, '类比法', '04_职业病危害因素.md'), '# 预评价第4章卡\n')
+        self.assertEqual(common.card('类比法', '04_职业病危害因素.md'), '# 预评价第4章卡\n')    # 老的两参数写法照旧
+
+    def test_角色和口径按类型(self):
+        tools.write(config.STD / '设计专篇' / '口径.md', '# 设计专篇口径\n\n- K007 在专篇里不用\n')
+        pre, des = common.system(), common.system(doctype.DESIGN, ('甲', '乙'))
+        self.assertTrue(pre.startswith(common.ROLE) and des.startswith(common.ROLE_DESIGN))
+        self.assertIn('可研没写的，写“可研没有写……”并提补充措施', common.ROLE)
+        self.assertNotIn('可研没有写……”并提补充措施', common.ROLE_DESIGN)
+        self.assertIn('采购技术协议应满足', common.ROLE_DESIGN)
+        self.assertIn('K007 在专篇里不用', des)
+        self.assertNotIn('K007 在专篇里不用', pre)
+        self.assertIn('<资料 名称="甲">', des)
+        self.assertEqual(common.system(('甲', '乙')).count('<资料 名称="甲">'), 1)           # 不带类型的老写法照旧
+
+    def test_名称表_专篇用岗位因素表_附件册用主报告的(self):
+        root = _design('t14_names')
+        self.assertIn('表1.3-1', common.names_table(root))                      # 没有岗位因素表：用第1章表1.3-1、第3章表3.1-x
+        f3 = next(f for f in tools.body_files(root) if f.startswith('03'))
+        tools.write(root / '正文' / f3, '# 3 职业病危害因素分析及危害程度预测\n\n表3.1-1  生产过程职业病危害因素\n\n| 场所 | 因素 |\n|---|---|\n| 升压站 | 噪声 |\n')
+        self.assertIn('升压站', common.names_table(root))
+        tools.write(root / '资料' / '岗位因素表.md', '# 岗位因素表\n\n| 评价单元 | 工作场所 |\n|---|---|\n| 甲 | 乙 |\n')
+        self.assertIn('岗位因素表（名称以此为准）', common.names_table(root / '附件册'))
+
+    def test_预评价没有岗位因素表_照表4点1减1拼_不调模型(self):
+        # 11-07 晋钢烧结、200MW：预评价是手工改出来的，资料/ 里没有岗位因素表；名称照预评价正文的表，一字不改
+        pre = project('t14_post_pre')
+        (pre / '资料' / '岗位因素表.md').unlink(missing_ok=True)
+        f1 = next(f for f in tools.body_files(pre) if f.startswith('01'))
+        f4 = next(f for f in tools.body_files(pre) if f.startswith('04'))
+        tools.write(pre / '正文' / f4, '# 4 职业病危害因素\n\n表4.1-1  运行期职业病危害因素分布及接触预测\n'
+                    '<!-- 表格 列宽=1,1,1,1,1,1 -->\n| 评价单元 | 工作场所 | 工作地点 | 工种（岗位） | 职业病危害因素 | 来源 |\n|---|---|---|---|---|---|\n'
+                    '| 燃料储运系统 | 料场 | 卸车点 | 料场人员 | 矽尘、噪声 | 卸车扬尘 |\n| ^ | 碎料机室 | 碎料机 | 料场人员 | 矽尘 | 破碎 |\n\n'
+                    '表4.1-2  各工种（岗位）职业病危害因素接触情况\n| 工种（岗位） | 人数 |\n|---|---|\n| 料场人员 | 4 |\n')
+        tools.write(pre / '正文' / f1, tools.read(pre / '正文' / f1) + '\n\n表1.8-1  评价单元及工作场所划分\n| 序号 | 评价单元 | 工作场所 |\n|---|---|---|\n| 1 | 燃料储运系统 | 料场 |\n')
+        md = new._post_from_pre(pre)
+        lines = md.split('\n')
+        head = next(ln for ln in lines if ln.startswith('|'))
+        self.assertEqual(head, '| 评价单元 | 工作场所 | 工种（岗位） | 工作地点 | 职业病危害因素 | 来源 |')   # 前三列换成单元、场所、工种
+        self.assertIn('| 燃料储运系统 | 料场 | 料场人员 | 卸车点 | 矽尘、噪声 | 卸车扬尘 |', md)                 # 内容一字不改
+        self.assertIn('预评价报告表1.8-1（原表）', md)
+        self.assertIn('| 料场人员 | 4 |', md)
+        self.assertEqual(new._table_counts(md.split('\n## ')[0])['场所'], 2)
+        root = _design('t14_post', pre)
+        FAKE.reset()
+        job = jobs.Job('新报告', '新报告', {}, root)
+        self.assertTrue(new._ensure_post(job, root, pre))
+        self.assertEqual(FAKE.calls, [])                                         # 不调模型
+        self.assertIn('料场人员', common.names_table(root / '附件册'))
+        self.assertFalse(new._ensure_post(job, root, pre))                        # 已有的不动
+        tools.write(pre / '正文' / f4, '# 4 职业病危害因素\n\n没有表。\n')
+        self.assertEqual(new._post_from_pre(pre), '')                              # 找不到表4.1-1：不拼
+
+    def test_第2章按节名找预评价文件(self):
+        # 200MW 预评价第2章 02_4＝生产设备、02_5＝建筑卫生；照文件名前缀会把建筑卫生学漏掉
+        files = ['01_总论.md', '02_1_工程概况.md', '02_2_选址与总体布局.md', '02_3_原辅材料与工艺.md', '02_4_生产设备.md',
+                 '02_5_建筑卫生与辅助用室.md', '05_防护设施.md', '10_1_问题.md', '10_2_建议.md']
+        titles = {'02_1_工程概况.md': '## 2.1 工程概况分析', '02_2_选址与总体布局.md': '## 2.2 选址分析与评价\n## 2.3 总体布局分析与评价',
+                  '02_3_原辅材料与工艺.md': '## 2.4 产品及原辅材料分析\n## 2.5 生产工艺分析与评价',
+                  '02_4_生产设备.md': '## 2.6 生产设备及布局分析与评价', '02_5_建筑卫生与辅助用室.md': '## 2.7 建筑卫生学分析与评价\n## 2.8 辅助用室分析与评价'}
+        got = doctype.pre_files(doctype.DESIGN, '04_1_构建筑物设计.md', files, titles)
+        self.assertEqual(got, ['02_2_选址与总体布局.md', '02_5_建筑卫生与辅助用室.md', '05_防护设施.md', '10_1_问题.md', '10_2_建议.md'])
+        self.assertEqual(doctype.pre_files(doctype.DESIGN, '04_4_x.md', files, titles), ['02_5_建筑卫生与辅助用室.md', '10_1_问题.md', '10_2_建议.md'])
+        self.assertEqual(doctype.pre_files(doctype.ANNEX, '04_x.md', files, titles)[0], '02_5_建筑卫生与辅助用室.md')
+        self.assertEqual(doctype.pre_files(doctype.DESIGN, '04_1_x.md', files)[:2], ['02_2_选址与总体布局.md', '02_4_生产设备.md'])   # 不给标题：照前缀
+
+    def test_要点卡按预评价方法加说明(self):
+        pre = project('t14_method_pre')
+        root = _design('t14_method', pre)
+        f3 = next(f for f in tools.body_files(root) if f.startswith('03'))
+        f2 = next(f for f in tools.body_files(root) if f.startswith('02_1'))
+        with mock.patch.object(tools, 'method_of', lambda r: '风险评估法'):
+            c3 = common.card(doctype.DESIGN, '', f3, root=root)
+            self.assertIn('承接的预评价用风险评估法', c3)
+            self.assertIn('预评价风险评估结果摘要', common.card(doctype.ANNEX, '', '03_x.md', root=root / '附件册'))
+            self.assertNotIn('本项目的方法', common.card(doctype.DESIGN, '', f2, root=root))         # 第2章不加
+            self.assertNotIn('本项目的方法', common.card(doctype.DESIGN, '', f3))                    # 不给 root 照旧
+        with mock.patch.object(tools, 'method_of', lambda r: '类比法'):
+            self.assertIn('承接的预评价用类比法', common.card(doctype.DESIGN, '', f3, root=root))
+
+    def test_登记第6列类型_兼容老5列(self):
+        reg = TMP / 't14_登记.md'
+        reg.write_text('| 项目 | 方法 | 文件夹 | 样板 | 定稿 |\n|---|---|---|---|---|\n| 老甲 | 类比法 | /x/老甲 | 是 | |\n', encoding='utf-8')
+        with mock.patch.object(config, 'REGISTER', reg):
+            self.assertEqual(tools.registered()[0]['类型'], doctype.PRE)
+            self.assertTrue(tools.register_add('专篇乙', '', TMP / 't14_乙', doctype.DESIGN))
+            self.assertTrue(tools.register_add('预评价丙', '风险评估法', TMP / 't14_丙'))
+            rows = tools.registered()
+            self.assertEqual([(r['项目'], r['方法'], r['类型']) for r in rows],
+                             [('老甲', '类比法', '预评价'), ('专篇乙', '—', '设计专篇'), ('预评价丙', '风险评估法', '预评价')])
+            text = reg.read_text(encoding='utf-8')
+            self.assertIn('| 专篇乙 | — | %s | | | 设计专篇 |' % (TMP / 't14_乙'), text)
+            self.assertIn('| 预评价丙 | 风险评估法 | %s | | | |' % (TMP / 't14_丙'), text)
+            self.assertEqual(tools.sample_for('类比法'), None)                          # 老甲的文件夹不存在
+            self.assertEqual(revise.targets('全部', doctype.DESIGN), [])                # 专篇乙没有正文
+
+    def test_配图位置按类型(self):
+        root = _design('t14_fig')
+        self.assertEqual(sorted(figures.places(root)), ['布局'])                       # 主报告只放总平面布置图
+        self.assertEqual(figures._span(root, '布局')[0][:4], '02_2')
+        self.assertIsNone(figures._wind_para(root))
+        self.assertEqual(sorted(figures.places(root / '附件册')), ['位置', '工艺'])
+        self.assertTrue(figures._wind_para(root / '附件册'))
+
+    def test_配图_图片行有了图没有的_从预评价拷(self):
+        # 11-05 田林专篇：模型照骨架写了图片行，配图各步看到“已有这类图”都跳过，出稿时图片文件不存在
+        pre = TMP / 't14_figpre'
+        (pre / '正文').mkdir(parents=True)
+        (pre / '图').mkdir()
+        from PIL import Image
+        for n in ('总平面.png', '流程甲.png', '流程乙.png'):
+            Image.new('RGB', (40, 30), 'white').save(pre / '图' / n)
+        tools.write(pre / '正文' / '02.md', '# 2 甲\n\n![图2.3-1  升压站平面布置图](图/总平面.png){宽=23cm}\n图2.3-1  升压站平面布置图\n\n'
+                    '![图2.5-1  甲工艺流程图](图/流程甲.png){宽=23cm}\n图2.5-1  甲工艺流程图\n\n'
+                    '![图2.5-2  乙工艺流程图](图/流程乙.png){宽=23cm}\n图2.5-2  乙工艺流程图\n')
+        root = _design('t14_figtake', pre)
+        ann = root / '附件册'
+        tools.write(root / '正文' / '02_2_工程分析.md', '# 2 乙\n\n## 2.2 丙\n\n总平面见图2.2-1。\n\n'
+                    '![总平面布置图](图/总平面布置图.png){宽=22cm}\n图2.2-1  总平面布置图\n')
+        for f in tools.body_files(ann):
+            (ann / '正文' / f).unlink()
+        tools.write(ann / '正文' / '02_工程分析资料.md', '# 附件2 甲\n\n## 2.3 工艺流程\n\n见图2.3-1。\n\n'
+                    '![工艺流程图](图/工艺流程图.png){宽=15cm}\n图2.3-1  工艺流程及职业病危害因素分布图\n\n'
+                    '![位置图](图/位置.png){宽=14cm}\n图2.3-2  项目区域位置图\n')
+        self.assertEqual(figures.take_pre(root), (['图2.2-1  总平面布置图'], []))
+        self.assertTrue((root / '图' / '总平面布置图.png').is_file())
+        took, miss = figures.take_pre(ann)
+        self.assertEqual(took, ['图2.3-1  甲工艺流程图', '图2.3-2  乙工艺流程图'])
+        self.assertEqual(miss, ['图2.3-3  项目区域位置图（预评价里也没有同类的图）'])
+        text = tools.read(ann / '正文' / '02_工程分析资料.md')
+        self.assertIn('见图2.3-1～图2.3-2。', text)
+        self.assertIn('图2.3-2  乙工艺流程图', text)
+        self.assertIn('图2.3-3  项目区域位置图', text)                    # 后面的图跟着重编
+        self.assertTrue((ann / '图' / '流程甲.png').is_file() and (ann / '图' / '流程乙.png').is_file())
+        self.assertEqual(figures.take_pre(ann), ([], ['图2.3-3  项目区域位置图（预评价里也没有同类的图）']))   # 再跑不重拷
+        self.assertEqual(figures.take_pre(BASE), ([], []))                 # 预评价不动
+
+    def test_命令行_设计专篇(self):
+        a = cli._parser().parse_args(['新报告', '/tmp/专篇', '--类型', '设计专篇', '--预评价', str(BASE), '--编号', 'AT-2026-Z020'])
+        k, title, p, proj = cli._job(a)
+        self.assertEqual((p['类型'], p['预评价'], p['方法'], p['编号']), ('设计专篇', str(BASE), '', 'AT-2026-Z020'))
+        with self.assertRaises(SystemExit), mock.patch('sys.stderr'):
+            cli.main(['新报告', '/tmp/专篇', '--类型', '设计专篇'])                     # 没给预评价
+        with self.assertRaises(SystemExit), mock.patch('sys.stderr'):
+            cli.main(['新报告', '/tmp/预评价'])                                         # 预评价没给方法
+
+    def test_类比资料_专篇不用(self):
+        root = _design('t14_analog')
+        with self.assertRaisesRegex(RuntimeError, '设计专篇用承接的预评价报告的类比事实'):
+            analog.job_analog(jobs.Job('类比资料', '补类比资料', {'资料': []}, root))
+
+    def test_审稿_专篇审两卷_用专篇的清单和遍(self):
+        root = _design('t14_rv')
+        tools.write(config.STD / '设计专篇' / '审稿清单.md', '# 专篇审稿清单\n\n## R1 事实\n- 专篇甲\n\n## R6 完整\n- 专篇乙\n')
+        FAKE.reset(('审 ', lambda **k: {'意见': []}), ('跨章一致', lambda **k: {'改动': [], '没改': []}))
+        out = review.run(jobs.Job('审稿', '审稿', {}, root), root, modify=False)
+        main, annex = tools.body_files(root), tools.body_files(root / '附件册')
+        self.assertEqual(out['审了'], len(main) + len(annex))
+        labels = FAKE.labels()
+        self.assertIn('审 附件册/%s·%s' % (annex[0], review.PASSES[0][0]), labels)
+        c = next(x for x in FAKE.calls if x['标签'] == '审 %s·%s' % (main[0], review.PASSES[1][0]))
+        self.assertIn('设计完整性', c['内容'])
+        self.assertIn('设计专篇主报告', c['内容'])
+        cr = next(x for x in FAKE.calls if x['标签'] == '跨章一致')
+        self.assertIn('正文/附件册/%s（带行号）' % annex[0], cr['内容'])
+        self.assertIn('第4.8节采纳情况', cr['内容'])
+
+    def test_审稿_只补审没成的遍_记录接在后面(self):
+        # 11-05 田林专篇：中转断线，17 遍没审成；补审只审这几遍，别的遍不重花钱
+        root = _design('t14_rv_pass')
+        main, annex = tools.body_files(root), tools.body_files(root / '附件册')
+        old = root / '审查' / '审稿记录' / main[0]
+        tools.write(old, '# 审稿记录 %s\n\n| 上次的意见 |\n' % main[0])
+        FAKE.reset(('审 ', lambda **k: {'意见': []}), ('跨章一致', lambda **k: {'改动': [], '没改': []}))
+        n1, n3 = review.PASSES[0][0], review.PASSES[2][0]
+        out = review.run(jobs.Job('审稿', '审稿', {}, root), root, modify=False,
+                         passes={main[0]: [n3], '附件册/' + annex[0]: [n1, n3]})
+        labels = [x for x in FAKE.labels() if x.startswith('审 ')]
+        self.assertEqual(sorted(labels), sorted(['审 %s·%s' % (main[0], n3), '审 附件册/%s·%s' % (annex[0], n1),
+                                                 '审 附件册/%s·%s' % (annex[0], n3)]))
+        self.assertEqual(out['审了'], 2)
+        self.assertIn('跨章一致', FAKE.labels())
+        rec = tools.read(old)
+        self.assertIn('上次的意见', rec)
+        self.assertIn('## 补审：' + n3, rec)
+        with self.assertRaisesRegex(RuntimeError, '补审的文件或遍名不对'):
+            review.run(jobs.Job('审稿', '审稿', {}, root), root, modify=False, passes={main[0]: ['没有这遍']})
+        a = cli._parser().parse_args(['审稿', str(root), '--补遍', '%s=%s' % (main[0], n3), '附件册/%s=%s' % (annex[0], n1)])
+        self.assertEqual(cli._job(a)[2]['遍'], {main[0]: [n3], '附件册/' + annex[0]: [n1]})
+
+    @unittest.skipUnless((TL_PRE / '正文').is_dir() and (TL_PRE / '资料' / '文本' / '索引.json').is_file(), '没有田林预评价的复制品')
+    def test_新报告_设计专篇_建项目拷资料写两卷(self):
+        pre = TMP / 't14_tl_pre'
+        shutil.copytree(TL_PRE, pre)
+        root = TMP / 't14_tl_专篇'
+        reg = TMP / 't14_tl_登记.md'
+        reg.write_text('| 项目 | 方法 | 文件夹 | 样板 | 定稿 | 类型 |\n|---|---|---|---|---|---|\n| 田林 | 类比法 | %s | | | |\n' % pre, encoding='utf-8')
+        sk = doctype.skeleton(doctype.DESIGN)
+
+        def write(label, **k):
+            f = label[len('写 '):]
+            src = sk / '附件册' / '正文' / f[len('附件册/'):] if f.startswith('附件册/') else sk / '正文' / f
+            body = re.sub(r'【待填[^】]*】', '甲', tools.read(src))
+            return '<<<正文>>>\n%s\n' % body.strip()
+
+        FAKE.reset(('补摘事实', lambda **k: '## 竖向布置（各建构筑物标高）\n- 升压站室内外高差 0.3 m（出处：初设 5.2）\n'), ('写 ', write))
+        form = {'文件夹': str(root), '类型': doctype.DESIGN, '预评价': str(pre), '方法': '', '资料': [], '编号': 'AT-2026-Z099',
+                '日期': '2026年11月', '审稿': False, '出稿': False}
+        job = jobs.Job('新报告', '新报告', form, root)
+        with mock.patch.object(config, 'REGISTER', reg), mock.patch.object(figures, 'run_all', lambda *a: {}) as _fg:
+            res = new.job_new(job)
+            row = tools.project_row(root)
+        # 建项目：主报告＋附件册
+        self.assertEqual((tools.report_type(root), tools.report_type(root / '附件册')), (doctype.DESIGN, doctype.ANNEX))
+        self.assertEqual(json.loads(tools.read(root / tools.SETTINGS_FILE))['预评价'], str(pre.resolve()))
+        self.assertEqual(doctype.pre_root(root), pre.resolve())
+        self.assertEqual((row['类型'], row['方法']), (doctype.DESIGN, '—'))
+        # 项目信息照预评价拷，编号、日期用表单，人员类别对到专篇
+        info = tools.read(root / '项目信息.md')
+        pinfo = tools.read(pre / '项目信息.md')
+        for k in ('项目名称', '建设单位', '评价单位', '法定代表人'):
+            self.assertIn('- %s：%s' % (k, new._info_val(pinfo, k)), info)
+        self.assertEqual(re.findall(r'^- 封面名称：(.*)$', info, re.M), re.findall(r'^- 封面名称：(.*)$', pinfo, re.M))
+        self.assertIn('- 报告编号：AT-2026-Z099', info)
+        self.assertIn('| 专篇编写人 |', info)
+        self.assertNotIn('| 报告签发人 |', info)                                   # 专篇声明里没有签发人
+        # 资料从预评价拷：事实库（补摘了专篇的几节）、口径、岗位因素表、类比事实、文本
+        for name in ('口径.md', '岗位因素表.md', '类比/类比事实.md', '文本/索引.json'):
+            self.assertTrue((root / '资料' / name).is_file(), name)
+        self.assertEqual(tools.read(root / '资料' / '岗位因素表.md'), tools.read(pre / '资料' / '岗位因素表.md'))
+        fx = tools.read(root / '资料' / '事实库.md')
+        self.assertTrue(fx.startswith(tools.read(pre / '资料' / '事实库.md').rstrip('\n')[:2000]))
+        self.assertIn('升压站室内外高差 0.3 m', fx)
+        self.assertTrue(all(('## ' + h[:6]) in fx for h in facts.HEADS_DESIGN))
+        self.assertNotIn('## 可研没有写的', tools.read(root / '资料' / '口径.md'))
+        self.assertTrue(tools.source_texts(root))
+        # 写作：主报告每个文件一次，附件册每个文件一次，附件册全在主报告之后；依赖先写
+        labels = [x for x in FAKE.labels() if x.startswith('写 ')]
+        main, annex = tools.body_files(root), tools.body_files(root / '附件册')
+        self.assertEqual(sorted(labels), sorted(['写 ' + f for f in main] + ['写 附件册/' + f for f in annex]))
+        last_main = max(labels.index('写 ' + f) for f in main)
+        self.assertTrue(all(labels.index('写 附件册/' + f) > last_main for f in annex))
+        for f in main:
+            for d in doctype.deps_of(doctype.DESIGN, f, main):
+                self.assertLess(labels.index('写 ' + d), labels.index('写 ' + f), '%s 要等 %s' % (f, d))
+        call = lambda lab: next(c for c in FAKE.calls if c['标签'] == lab)  # noqa: E731
+        c42 = call('写 ' + next(f for f in main if f.startswith('04_2')))
+        for pf in doctype.pre_files(doctype.DESIGN, '04_2', tools.body_files(pre)):
+            self.assertIn('承接的预评价报告 正文/%s（全文）' % pf, c42['内容'])
+        self.assertIn('类比事实.md（类比项目的，不是本项目的事实）', c42['内容'])
+        self.assertNotIn('<<<可研没有>>>', c42['内容'])
+        self.assertIn('附件册表1.1-1', c42['内容'])
+        c06 = call('写 附件册/' + next(f for f in annex if f.startswith('06')))
+        self.assertIn('主报告 正文/%s' % next(f for f in main if f.startswith('04_5')), c06['内容'])
+        self.assertTrue(any(x.startswith('承接的预评价报告 正文/10') for x in re.findall(r'名称="([^"]+)"', c06['内容'])))
+        self.assertTrue(all(c['标签'] != '填项目信息' and c['标签'] != '岗位因素表' for c in FAKE.calls))   # 不调模型
+        self.assertEqual((res['类型'], res['写作'], res['附件册']), (doctype.DESIGN, len(main), len(annex)))
+        note = tools.read(root / '输出' / '交稿说明.md')
+        self.assertIn('主报告＋资料性附件册两卷', note)
+        self.assertIn(str(pre.resolve()), note)
+        self.assertFalse(new._record_path(root).exists() or new._record_path(root / '附件册').exists())
+
+
+class T15_设计专篇审查修正(Base):
+    """审查报的问题：预评价交稿说明、跨卷核对、改稿规则去向、审稿附件册章键、只写附件册、承接预评价的校验。"""
+
+    def test_预评价交稿说明_gaps模块不被遮住(self):
+        root = project('t15_note')
+        tools.write(root / '资料' / '口径.md', '# 口径\n\n## 可研没有写的\n\n- 甲：第5章\n')
+        chk = tools.check(root)
+        table = {'单元': 1, '场所': 1, '工种': 1}
+        new._note(root, {'方法': '类比法'}, {'项目名称': '测试'}, chk, None, None, table)
+        note = tools.read(root / '输出' / '交稿说明.md')
+        self.assertIn('## 可研没有写的', note)
+        self.assertTrue((root / '输出' / gaps.FILE).is_file())
+        (root / '资料' / '口径.md').unlink()                           # 没有这一节也不出错
+        new._note(root, {'方法': '类比法'}, {'项目名称': '测试'}, chk, None, None, table)
+
+    def test_附件册还是骨架_主报告不报条数错误(self):
+        root = _design('t15_adopt')
+        f45 = next(f for f in tools.body_files(root) if f.startswith('04_5'))
+        p = root / '正文' / f45
+        text = tools.read(p)
+        for n, a in (('5', '5'), ('34', '30'), ('24', '20')):
+            text = text.replace('| 2【待填】 | 【待填】 | 【待填】 | 【待填】 |', '| %s | %s | %s | 0 |' % (n, a, int(n) - int(a)), 1)
+        tools.write(p, text)
+        errs = [m for m in tools.check(root)['按文件'].get(f45, {}).get('错误', []) if '附件册' in m]
+        self.assertEqual(errs, [])
+        hints = ' '.join(tools.check(root)['按文件'].get('附件册', {}).get('提示', []))
+        self.assertIn('没写处理方式', hints)
+
+    def test_附件册格式坏了_主报告照查(self):
+        root = _design('t15_bad')
+        f = tools.body_files(root / '附件册')[2]
+        p = root / '附件册' / '正文' / f
+        tools.write(p, tools.read(p) + '\n<!-- 没有结束符\n')
+        c = tools.check(root)
+        self.assertFalse(c.get('格式错误'))
+        self.assertFalse(any(f in k for k in c['按文件']))                # 附件册的文件不算主报告的
+        self.assertIn('附件册读不了', ' '.join(c['按文件'].get('附件册', {}).get('提示', [])))
+
+    def test_引附件册不存在的表报错(self):
+        root = _design('t15_ref')
+        f1 = tools.body_files(root)[0]
+        p = root / '正文' / f1
+        tools.write(p, tools.read(p).replace('## 1.1 任务来源及目的\n', '## 1.1 任务来源及目的\n\n见附件册表1.1-1、附件册表9.9-1。\n', 1))
+        errs = tools.check(root)['按文件'][f1]['错误']
+        self.assertTrue(any('附件册表9.9-1不存在' in m for m in errs), errs)
+        self.assertFalse(any('表1.1-1' in m for m in errs), errs)
+
+    def test_附件册检查不要总平面图(self):
+        todo = ' '.join(x for v in tools.check(_design('t15_fig') / '附件册')['按文件'].values() for x in v.get('待办', []))
+        self.assertIn('区域位置图', todo)
+        self.assertNotIn('总平面布置图', todo)
+
+    def test_资料欠缺_本公司填的不找建设单位(self):
+        g = gaps.collect(_design('t15_gap'))
+        self.assertFalse(any(x['缺什么'] in gaps.OWN_KEYS for x in g['要补']))
+        self.assertIn('资质证书编号', g['本公司填'])
+        self.assertTrue(any(x['缺什么'] == '建设单位' for x in g['要补']))
+        self.assertEqual(gaps.collect(BASE).get('本公司填'), [])
+
+    def test_改稿规则_按适用类型写到哪(self):
+        self.assertEqual(revise.rule_file(doctype.DESIGN), config.STD / '设计专篇' / '检查规则.md')
+        self.assertEqual(revise.rule_file(doctype.PRE), revise.COMMON())
+        self.assertEqual(revise.rule_file('全部'), revise.COMMON())
+        self.assertEqual(revise._of_kind([BASE], doctype.DESIGN), [])
+        self.assertEqual(revise._of_kind([BASE], doctype.PRE), [BASE])
+
+    def test_改稿只适用专篇_规则进专篇检查规则_预评价不受影响(self):
+        dsg = _design('t15_rv_d')
+        pre = project('t15_rv_p')
+        common_before = tools.read(revise.COMMON())
+        dec = {'范围': '通用', '适用类型': doctype.DESIGN, '标题': '专篇不写某词', '规矩': '专篇不写“专篇测试词”', '例外': '',
+               '取代': [], '规则': [{'节': '禁用', '词': '专篇测试词'}], '要点卡': [], '改法': '删掉', '关键词': [],
+               '涉及章': [], '要核事实': False}
+        FAKE.reset(('定口径', lambda **k: dec))
+        with mock.patch.object(revise, 'targets', lambda p, kind='全部': [dsg] if kind == doctype.DESIGN else [dsg, pre]):
+            revise.run(jobs.Job('改稿', '改稿', {}, None), '专篇不写专篇测试词', '全部', publish=False)
+        self.assertEqual(tools.read(revise.COMMON()), common_before)
+        self.assertIn('专篇测试词', tools.read(config.STD / '设计专篇' / '检查规则.md'))
+        p = ch07(pre)
+        tools.write(p, tools.read(p) + '\n专篇测试词。\n')
+        self.assertFalse(any('专篇测试词' in m for m in tools.check(pre)['按文件'][p.name]['错误']))
+
+    def test_审稿_网页的附NN章键选中附件册(self):
+        root = _design('t15_rvsel')
+        FAKE.reset(('审 ', lambda **k: {'意见': []}))
+        out = review.run(jobs.Job('审稿', '审稿', {}, root), root, modify=False, chapters='附01,附04')
+        self.assertEqual(out['审了'], 2)
+        self.assertTrue(all(lab.startswith('审 附件册/') for lab in FAKE.labels() if lab.startswith('审 ')))
+
+    def test_承接预评价的校验(self):
+        root = TMP / 't15_pre_new'
+        self.assertEqual(new.check_pre(BASE, root), '')
+        self.assertIn('不是预评价', new.check_pre(_design('t15_pre_d'), root))
+        self.assertIn('里面', new.check_pre(BASE, BASE / '专篇'))
+        self.assertIn('没有正文', new.check_pre(TMP / '没有', root))
+        job = jobs.Job('新报告', '新报告', {'文件夹': str(root), '类型': doctype.DESIGN, '预评价': ''}, root)
+        with self.assertRaisesRegex(RuntimeError, '要给承接的预评价'):
+            new.job_design(job)
+
+    def test_命令行_接着做按已建项目定类型_专篇要求登记(self):
+        root = _design('t15_cli')
+        with mock.patch.object(cli, '_job', side_effect=SystemExit(9)):
+            with self.assertRaises(SystemExit) as cm:
+                cli.main(['新报告', str(root), '--接着做'])       # 不再报“预评价报告要写 --方法”
+            self.assertEqual(cm.exception.code, 9)
+        with self.assertRaises(SystemExit), mock.patch('sys.stderr'), mock.patch.object(tools, 'registered', lambda: []):
+            cli.main(['新报告', str(TMP / 't15_cli2'), '--类型', '设计专篇', '--预评价', str(BASE)])
+        self.assertIn('附件册/02', cli._parser().format_help())
+
+    def test_只写附件册的文件(self):
+        root = _design('t15_only', pre=BASE)
+        seen = []
+        with mock.patch.object(new, 'write_all', lambda job, r, m, s, only=None: seen.append((Path(r).name, only)) or {}), \
+                mock.patch.object(new, '_copy_pre', lambda *a: []), mock.patch.object(new, '_take_extra', lambda *a: None), \
+                mock.patch.object(new.F, 'build_extra', lambda *a: {}), mock.patch.object(tools, 'source_texts', lambda r: [('a', 'b')]), \
+                mock.patch.object(tools, 'register_add', lambda *a: True):
+            tools.write(root / '项目信息.md', tools.read(root / '项目信息.md').replace('- 项目名称：【待填】', '- 项目名称：甲'))
+            tools.write(root / '资料' / '事实库.md', '# 事实库\n')
+            new.job_design(jobs.Job('新报告', '新报告', {'文件夹': str(root), '类型': doctype.DESIGN, '只写': ['附件册/06', '04_5']}, root))
+        self.assertEqual(seen, [(root.name, ['04_5']), ('附件册', ['06'])])
+
+    def test_口径表章号换成专篇的节(self):
+        kj = '# 口径\n\n## 可研没有写的\n\n- 化粪池检测：第4章、第8章\n- 氧含量检测仪器：第6章\n- 其他：影响防护\n-\n'
+        out = new._design_gaps(kj)
+        self.assertIn('## 设计文件没有写的', out)
+        self.assertIn('- 化粪池检测：第3章、第4.3.7节', out)
+        self.assertIn('- 氧含量检测仪器：第4.4节', out)
+        self.assertIn('- 其他：影响防护', out)
+        self.assertNotIn('\n-\n', out)
+
+    def test_写作材料_预评价项目信息和单节_附件册给主报告全文(self):
+        pre = TMP / 't15_pre_src'
+        shutil.copytree(BASE, pre)
+        root = _design('t15_docs', pre=pre)
+        names = lambda docs: [re.search(r'名称="([^"]+)"', d).group(1) for d in docs]  # noqa: E731
+        d01 = names(common.pre_docs(root, '01_概述.md'))
+        self.assertIn('承接的预评价报告 项目信息', d01)
+        self.assertTrue(any(x.startswith('承接的预评价报告 正文/11') for x in d01), d01)
+        self.assertEqual(doctype.annex_main_full('06_采纳明细.md', tools.body_files(root)),
+                         [f for f in tools.body_files(root) if f.startswith('04_5')])
+        deps41 = doctype.deps_of(doctype.DESIGN, next(f for f in tools.body_files(root) if f.startswith('04_1')), tools.body_files(root))
+        for k in ('04_2', '04_3', '04_4'):    # 表4.1-1“详见”列要引它们的表号项号，所以 04_1 排在后面
+            self.assertTrue(any(f.startswith(k) for f in deps41), deps41)
+
+    def test_写作任务不用计数占位符(self):
+        self.assertNotIn('{{计数:表4.3-1}}', new.DESIGN_TASK)
+        self.assertIn('{{行数:表4.3-1}}', new.DESIGN_TASK)
+        self.assertIn('第1.3节、第3.1.5节按骨架各写一句', common.ROLE_DESIGN)
+        self.assertNotIn('最高优先', common.system(doctype.DESIGN))
+
+    def test_写作提示带篇幅预算和新写法(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / '项目信息.md').write_text('- 报告类型：设计专篇\n', encoding='utf-8')
+            (root / '流水线设置.json').write_text('{"篇幅档": "B"}', encoding='utf-8')
+            line = new.design_budget_line(root, doctype.DESIGN, '04_2_防护设施设计.md')
+            self.assertIn('目标约 4400 字', line)          # 5000×0.88
+            self.assertIn('最多不超过 5280 字', line)       # ×1.2
+            self.assertIn('B 档', line)
+            task = new.DESIGN_TASK % ('04_2_防护设施设计.md', '', new.DESIGN_KIND[doctype.DESIGN], line, '', '')
+            self.assertIn('目标约 4400 字', task)
+            self.assertNotIn('承接预评价条目', task)
+            self.assertIn('附件册附件6', task)
+            self.assertIn('附件册表1.1-1', new.DESIGN_KIND[doctype.DESIGN])
+            # 预评价项目、算不出预算的文件不写篇幅行
+            self.assertEqual(new.design_budget_line(root, doctype.DESIGN, 'x.md'), '')
+        self.assertIn('<!-- 公式 编号=', new.DESIGN_KIND[doctype.ANNEX])
+        self.assertIn('采购技术协议应满足', common.ROLE_DESIGN)
+        self.assertIn('接触限值', common.ROLE_DESIGN)
+
+    def test_设计专篇审稿对R10_R11照报(self):
+        txt = ''.join(review.HOW_DESIGN.values())
+        self.assertIn('R10', txt)
+        self.assertIn('R11', txt)
+        self.assertNotIn('只是“可以写得更好”的不报', txt)
+        self.assertNotIn('预期结论都是“符合”', txt)
 
 
 class T99_真文件没动(unittest.TestCase):

@@ -3,6 +3,7 @@
 用法：report.py coverage 原稿项目文件夹 新稿项目文件夹 [--下限 0.8]
 
 - 章按章名关键词对齐到 GBZ/T 196—2025 的 11 章（原稿常为 10 章：第9章“补充措施与建议”、第10章“结论”），认不出的按章号。
+  设计专篇（项目信息“报告类型：设计专篇”）对齐到 WS/T 882—2013 附录C 的 5 章；附件册按“附件N”的 N 对齐。
 - 字数只数汉字、数字和字母；同一章里重复出现的段落或单元格只算一次（原稿常把同一句依据、同一段危害特性抄几十遍）。
 - 字数（去重后）低于下限报“错误”：逐节对照原稿找回被删内容。
 - 表格数、表行数低于下限只报“提示”：几张小表合并成一张、表格改写成段落都会让它变少，人工确认没有丢数据即可。
@@ -11,7 +12,7 @@
 import re
 from pathlib import Path
 
-from . import mdparse
+from . import mdparse, doctype
 
 RE_CJK = re.compile(r'[一-鿿0-9A-Za-z]')
 # 关键词 → GBZ/T 196—2025 §10.2 章号；先判“关键控制点”“结论”，再判“补充”
@@ -29,14 +30,21 @@ def _key(s):
     return ''.join(RE_CJK.findall(_plain(s)))
 
 
-def canon(no, title):
-    return next((k for w, k in KEYS if w in title), no)
+# 设计专篇：WS/T 882—2013 附录C 的 5 章。“防护设施设计”要先于“危害因素”判（第3章名里没有“设施”）
+DESIGN_KEYS = (('概述', 1), ('概况', 2), ('工程分析', 2), ('危害因素', 3), ('危害程度', 3), ('防护设施设计', 4),
+               ('预期效果', 5))
+
+
+def canon(no, title, keys=KEYS):
+    return next((k for w, k in keys if w in title), no)
 
 
 def chapters(folder):
     """按一级标题切章：{标准章号: {'no','title','chars','raw','tables','rows','figs'}}。
     chars 为去重后的字数，raw 为不去重的字数。"""
     blocks, _ = mdparse.parse_project_body(Path(folder) / '正文')
+    kind = doctype.type_of(folder)
+    keys = DESIGN_KEYS if kind == doctype.DESIGN else KEYS
     out, cur, seen = {}, None, set()
 
     def count(c, s):
@@ -50,10 +58,10 @@ def chapters(folder):
     for b in blocks:
         t = b['t']
         if t == 'h' and b['level'] == 1:
-            m = re.match(r'^(\d+)\s+(.+)$', b['text'].strip())
+            m = re.match(r'^(?:附件\s*)?(\d+)\s+(.+)$' if kind == doctype.ANNEX else r'^(\d+)\s+(.+)$', b['text'].strip())
             if m:
                 no, title = int(m.group(1)), m.group(2).strip()
-                cur = canon(no, title)
+                cur = no if kind == doctype.ANNEX else canon(no, title, keys)
                 seen = set()
                 out.setdefault(cur, {'no': no, 'title': title, 'chars': 0, 'raw': 0, 'tables': 0, 'rows': 0, 'figs': 0})
             continue

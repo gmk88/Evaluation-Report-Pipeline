@@ -1,0 +1,1684 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>预评价编制工作台</title>
+<!-- 浏览器标签上的小图标：和桌面图标一样（app/desktop/icon.icns），内嵌在页面里，不用另外请求 -->
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAGU0lEQVR42r2Xa4xVVxXHf2ufc8+5L+aBMgUsYZqmVZsawBarFhMbohHSxAf1RVCqwbTaGA2JGqOG+Gj9opH0g20TnxOqRqKRijGNTbVDxKagYNuUIkhtAYegMzBz3+ecvZYfzp1hmLlT0BJ3snNz9z5777X/67/+ey0BExADePu3003iwk+a6s0ofYaI8MqaAYIZQk0C92eMB3+/XX7enRXZscPc3uUElcnsoSAKP4aBZmCmXMkm4nAh4MAnuqscuW23TJAKwLr7kh8WBwt3ts+nHkEEHAhXthkGCmixvxB2zqc/3ffFaLO87Zvtd7so/lWWJJlAyP+jGWlQjAppO/lQ6NW2o5ipLnhl53Jnqk3DmXezy4G+u84uwiKQTA3T7aGpv8knHcE00DmwC+AEJptG6KAcC6qQZEbq87lLNTWIQyFwF2wQcD5JMHR1aEbFfDaLsxcON4HxhvHBWwqMnTdGj2b0l4Sr+oShRUIzyW84/T3zdoFyBC+NG5Mty42wWfNCFC7EdhFodeALG2O2rotop8bX9xg/GE14300xn9tYvGyX3zPSZN/fPNVYLnabQWja24BpRhw7k9FMCpQj4d47SlRimGoZ9bZR7xhxKKhBtZhDnWRGrZ27J/NGJRYyb5gqpjKPN6EtwCQziAP42ZNtTo577v9olf6S8NqljvseafKnYwnlWJhqKfU2fG1TmY2rIh5/LuVLu5v0l6BadEy1lGYCpQJ4nX9WTwSMCwRb2ic8eTzhy7vrrFkZcu+eJtcMBXzrwxXiAmz57hSTLSPz+eaZN6aaHjNh55YqjY7xjT0NTk94orAHAtqDAwI0E6OT5sYEDvYcbPGbQ8LiitBse5YNOK7qd7zp2oBf/6VD0DU4h15Z+aqQG1eEOAGH4dUwM3SeC+aMOIFGorzn5hKvXx7SSfOxYiQcPJHw2LMdzjWMn+xv8tkNVd75hphfPtWa4b4INDueNSuLiMDvnunw/D8TBsoO7+nhgrkICLQ6yq3XRdz+xouZfq7ueaTtKcfCviNtPvOuKm+9rsBAGdIsN0DVcCgbVsUI8NvDrZyA1lu45nFAgdAZR04nLK4KtZaxamWBJX0B9bZippSjgBfOppw571k+GLBqRUgrzfdptJXbbohYe23Ev2vKH4+26SvlbsEuAwHvoRLBj5+o8f3Hp5hsGrs+vYT1NwaYGWmmTNSMcw3lR3+osajkOHC8xXvXlrrKZzzzUoeR0TpPv5hwbCxhccVRjoVeb3uo2jsMnUApBq8Q5OkCSaoM9TnufscimomRZjDVUratX8Sq4QIAq4cjPvDmMqfGM5YOBHz1/f2owcgTtRk+2ctyYJYO5GGlM8ztZMqrq8In1vctqHqvW17gK5sG543vGp1CvSHBXANUXzabyQmULykEMFHP2HOgjtccbifQSeEt1xcZHirw4r9S9h9tExcEVSMMcqX0XjEM08tEYBoF68YvQKvjmahl7BqdYvS5JlGYQzrRUL5391KGhwocON7mrofGGKw4vOZRFTrJOQCX1oG5IZlkfmbRDVdHbPn8csbOZex/vs7iSjiT60RhzrAohIGK5HHfXWjd8OzVeirhtBp2EnjNYMD1yyLU4M7bBgA4cnIS7zUPLSBLL7hJzcgyJfNCpjbzTC90zQU5EDjhXDPjng1DDA8VZsYfPVzjgUfHKcdC5hUnoLN4Ypb/V5XcfZd4qp1Z7uO53asSh7D3wCQAx8c63PXAKT5+/0leONMmdDZzsJlHNdd7r7lYLbTv3L4gAh6IAvj7WJst3/kHh060ODuZMVjN40i78Bt5cjg0EBI4YagvBNXu+3/ppDG8VP7vBB47PEUpcjmz/XzljEIYfbbG6fGEE2c6RCF477HLqReGtz1dF5EKpgtUNeCcoGaYza8WrPsCNtpK6vO4rxZdz2/n0tzM0tDMH5KgdKumLUPE9TJCvfVMOGfrRTUWRPKEY3b4LSAwKmFRzHf+GprpTjPWmZFh6v7XWiP77woTLxIUzGynAKzY+tTDQWXpZt84m4G5XkhcoYpIAQ0qS8KsfvYXp0bW3hGww9yQNvd2GuevkbC4GpxYXp12HwN7hZ2ZXwkiIYidJlO7fczW+u3LvMwuz6/+yMHNJu5TmK4BX7IrVKEKmIlri4SHsezB0yNrR6bL8/8AfA/Sk+6+UJwAAAAASUVORK5CYII=">
+<style>
+:root {
+  --bg: #f3f5f8; --card: #ffffff; --line: #e1e5eb; --line2: #c9d0d8; --text: #1d2228; --muted: #5f6873; --faint: #8a939d;
+  --main: #1f6feb; --main-dark: #1859c4; --main-soft: #e8f0fe;
+  --ok: #1a7f37; --ok-soft: #e4f5e9; --warn: #8a5a00; --warn-soft: #fff4d6; --bad: #c62828; --bad-soft: #fdeaea;
+  --del: #fde2e2; --del-text: #9b1c1c; --ins: #dcf5e3; --ins-text: #12632b;
+  --radius: 14px; --shadow: 0 1px 2px rgba(16,24,40,.05), 0 2px 8px rgba(16,24,40,.04);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-size: 17px; line-height: 1.65;
+  font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans CJK SC", sans-serif; }
+svg.i { width: 20px; height: 20px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: -4px; }
+header { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+.hbar { max-width: 1320px; margin: 0 auto; padding: 10px 24px; display: flex; align-items: center; gap: 14px 24px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 700; cursor: pointer; }
+.brand .logo { width: 34px; height: 34px; border-radius: 9px; background: var(--main); color: #fff; display: grid; place-items: center; font-size: 19px; }
+nav { display: flex; gap: 4px; margin-left: auto; align-items: center; }
+nav button { font-size: 17px; padding: 7px 16px; border: 0; border-radius: 9px; background: transparent; color: var(--text); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+nav button:hover { background: var(--main-soft); }
+nav button.on { background: var(--main-soft); color: var(--main-dark); font-weight: 600; }
+#conn { font-size: 15px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+#conn .dot { width: 9px; height: 9px; border-radius: 50%; background: #aaa; }
+#conn.ok .dot { background: var(--ok); } #conn.bad .dot { background: var(--bad); } #conn.bad { color: var(--bad); }
+main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 70px; }
+section.page { display: none; } section.page.on { display: block; }
+h2 { font-size: 23px; margin: 4px 0 6px; } h3 { font-size: 19px; margin: 22px 0 10px; }
+.lead { color: var(--muted); margin: 0 0 18px; }
+.muted { color: var(--muted); } .faint { color: var(--faint); } .note { color: var(--muted); font-size: 15px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow); }
+button, .btn { font: inherit; font-size: 16px; padding: 8px 16px; border-radius: 10px; border: 1px solid var(--line2);
+  background: #fff; color: var(--text); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; line-height: 1.4; }
+button:hover { background: #f5f8fc; border-color: #aeb8c4; }
+button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 3px solid #9cc0ff; outline-offset: 2px; }
+button:disabled { opacity: .5; cursor: default; }
+button.main { background: var(--main); border-color: var(--main); color: #fff; font-weight: 600; }
+button.main:hover { background: var(--main-dark); }
+button.big { font-size: 18px; padding: 12px 22px; border-radius: 12px; }
+button.ghost { border-color: transparent; background: transparent; color: var(--main-dark); }
+button.ghost:hover { background: var(--main-soft); }
+button.danger { color: var(--bad); border-color: #eab0b0; }
+button.small { font-size: 15px; padding: 4px 11px; border-radius: 8px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.row > input { flex: 1 1 220px; min-width: 0; width: auto; }
+.spacer { flex: 1; }
+/* 状态：颜色＋文字 */
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 11px; border-radius: 999px; font-size: 15px; white-space: nowrap; background: #eef1f4; color: var(--muted); }
+.pill::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); } .pill.run { background: var(--main-soft); color: var(--main-dark); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); } .pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.run::before { animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: .25; } }
+/* 首页卡片 */
+.homebar { display: flex; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+.pcard { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px 16px; box-shadow: var(--shadow);
+  cursor: pointer; display: flex; flex-direction: column; gap: 10px; transition: border-color .15s, box-shadow .15s; }
+.pcard:hover { border-color: #9cc0ff; box-shadow: 0 4px 16px rgba(31,111,235,.10); }
+.pcard .t { font-size: 19px; font-weight: 700; line-height: 1.4; }
+.pcard .meta { display: flex; gap: 8px 14px; flex-wrap: wrap; font-size: 15px; color: var(--muted); }
+.pcard .say { font-size: 16px; }
+.pcard .foot { display: flex; gap: 8px; align-items: center; margin-top: 2px; }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.chip { min-width: 30px; height: 26px; padding: 0 6px; border-radius: 7px; border: 1.5px solid var(--line2); color: var(--faint);
+  font-size: 13px; display: grid; place-items: center; font-variant-numeric: tabular-nums; background: #fff; }
+.chip.done { background: var(--ok-soft); border-color: #9fd6ae; color: var(--ok); }
+.chip.err { background: var(--bad-soft); border-color: #eeaaaa; color: var(--bad); }
+.chip.run { background: var(--main-soft); border-color: #9cc0ff; color: var(--main-dark); animation: blink 1.2s infinite; }
+.newcard { border: 2px dashed #a9c4f5; background: #f7faff; color: var(--main-dark); align-items: center; justify-content: center; min-height: 190px; font-size: 18px; font-weight: 600; text-align: center; }
+.newcard:hover { background: var(--main-soft); }
+.newcard svg.i { width: 34px; height: 34px; }
+/* 报告页 */
+.crumb { margin-bottom: 10px; }
+.phead { display: flex; gap: 14px 20px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 16px; }
+.phead .ttl { flex: 1 1 380px; min-width: 0; }
+.phead h2 { margin: 0 0 6px; line-height: 1.35; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.stat { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+.stat .n { font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.3; }
+.stat .l { color: var(--muted); font-size: 15px; }
+.stat.bad .n { color: var(--bad); } .stat.ok .n { color: var(--ok); } .stat.warn .n { color: var(--warn); }
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+.toc { position: sticky; top: 76px; max-height: calc(100vh - 96px); overflow-y: auto; padding: 8px; }
+.toc .h { font-size: 15px; color: var(--muted); padding: 6px 10px 4px; }
+.toc button { width: 100%; text-align: left; border: 0; border-radius: 9px; padding: 8px 10px; display: flex; gap: 10px; align-items: flex-start; background: transparent; font-size: 16px; }
+.toc button:hover { background: #f3f6fa; }
+.toc button.on { background: var(--main-soft); }
+.toc .no { flex: none; width: 34px; height: 24px; border-radius: 6px; font-size: 13px; display: grid; place-items: center; border: 1.5px solid var(--line2); color: var(--faint); margin-top: 1px; }
+.toc .no.done { background: var(--ok-soft); border-color: #9fd6ae; color: var(--ok); }
+.toc .no.err { background: var(--bad-soft); border-color: #eeaaaa; color: var(--bad); }
+.toc .nm { flex: 1; min-width: 0; line-height: 1.4; }
+.toc .sub { display: block; font-size: 13px; color: var(--faint); margin-top: 2px; }
+.toc .sub.bad { color: var(--bad); }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: -4px -4px 14px; padding: 0 4px; flex-wrap: wrap; }
+.tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; padding: 10px 14px; font-size: 17px; color: var(--muted); }
+.tabs button:hover { background: transparent; color: var(--text); }
+.tabs button.on { color: var(--main-dark); border-bottom-color: var(--main); font-weight: 600; }
+.tabs .cnt { font-size: 13px; background: #eef1f4; color: var(--muted); border-radius: 999px; padding: 0 8px; }
+.tabs .cnt.bad { background: var(--bad-soft); color: var(--bad); }
+/* 正文 */
+.doc { font-size: 17px; line-height: 1.85; max-width: 920px; }
+.doc .ln { position: relative; padding: 1px 8px 1px 52px; border-radius: 6px; scroll-margin-top: 120px; }
+.doc .ln .num { position: absolute; left: 0; width: 42px; text-align: right; color: #b5bcc4; font-size: 12px; top: .35em; user-select: none; font-variant-numeric: tabular-nums; }
+.doc .ln.flag { background: var(--warn-soft); }
+.doc .ln.flagbad { background: var(--bad-soft); }
+.doc .ln.hit { outline: 2px solid var(--main); }
+.doc .ln .why { display: block; font-size: 14px; color: var(--bad); margin-top: 2px; }
+.doc .ln .why.w { color: var(--warn); }
+.doc h1, .doc h2, .doc h3, .doc h4 { margin: 14px 0 4px; line-height: 1.45; }
+.doc h1 { font-size: 23px; } .doc h2 { font-size: 20px; } .doc h3 { font-size: 18px; } .doc h4 { font-size: 17px; }
+.doc .tbl { overflow-x: auto; margin: 6px 0; }
+.doc table { border-collapse: collapse; font-size: 15px; line-height: 1.5; }
+.doc td, .doc th { border: 1px solid var(--line2); padding: 4px 8px; vertical-align: top; }
+.doc th { background: #f3f5f8; }
+.doc .cap { text-align: center; font-weight: 600; }
+.doc .cmt { color: var(--faint); font-size: 14px; }
+.doc .img { color: var(--muted); font-size: 15px; }
+/* 问题、改动 */
+.group { margin-bottom: 22px; }
+.group > .gh { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-weight: 700; font-size: 18px; }
+.issue { display: flex; gap: 12px; align-items: flex-start; padding: 11px 14px; border: 1px solid var(--line); border-radius: 11px; margin-bottom: 8px; background: #fff; }
+.issue .where { flex: none; font-size: 14px; color: var(--muted); min-width: 120px; }
+.issue .what { flex: 1; min-width: 0; word-break: break-word; }
+.issue.bad { border-left: 4px solid var(--bad); } .issue.warn { border-left: 4px solid #e0b040; } .issue.todo { border-left: 4px solid #b9c0c8; }
+.change { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; overflow: hidden; background: #fff; }
+.change .ch { display: flex; gap: 10px; align-items: center; padding: 9px 14px; background: #f7f9fb; border-bottom: 1px solid var(--line); flex-wrap: wrap; font-size: 15px; }
+.change .cb { padding: 10px 14px; }
+.change .why { font-size: 15px; color: var(--muted); margin-top: 8px; }
+.change .why b { color: var(--text); font-weight: 600; }
+.diff { white-space: pre-wrap; word-break: break-word; line-height: 1.8; }
+.diff del { background: var(--del); color: var(--del-text); text-decoration: line-through; text-decoration-color: rgba(155,28,28,.5); border-radius: 3px; }
+.diff ins { background: var(--ins); color: var(--ins-text); text-decoration: none; border-radius: 3px; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.two > div { border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; word-break: break-word; font-size: 16px; }
+.two .o { background: #fbf3f3; } .two .n { background: #f2faf4; }
+.two .lab { display: block; font-size: 13px; color: var(--muted); margin-bottom: 2px; }
+.filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
+.filter button.on { background: var(--main-soft); border-color: #9cc0ff; color: var(--main-dark); }
+/* 进度条 */
+.live { border: 1px solid #b9d1fb; background: #f6f9ff; border-radius: var(--radius); padding: 16px 20px; margin-bottom: 16px; }
+.live.fail { border-color: #eeb5b5; background: #fff7f7; }
+.live.done { border-color: #a9dbb6; background: #f6fcf8; }
+.live .top { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.live .top .what { font-size: 18px; font-weight: 700; }
+.steps { display: flex; margin: 16px 0 6px; gap: 0; }
+.steps .s { flex: 1; text-align: center; position: relative; font-size: 14px; color: var(--faint); padding-top: 34px; min-width: 0; }
+.steps .s::before { content: ""; position: absolute; top: 12px; left: 0; right: 0; height: 3px; background: var(--line); }
+.steps .s:first-child::before { left: 50%; } .steps .s:last-child::before { right: 50%; }
+.steps .s .b { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); width: 24px; height: 24px; border-radius: 50%; background: #fff;
+  border: 3px solid var(--line2); display: grid; place-items: center; font-size: 12px; font-weight: 700; z-index: 1; }
+.steps .s.done { color: var(--ok); } .steps .s.done::before { background: #9fd6ae; } .steps .s.done .b { background: var(--ok); border-color: var(--ok); color: #fff; }
+.steps .s.now { color: var(--main-dark); font-weight: 600; } .steps .s.now .b { border-color: var(--main); background: var(--main-soft); animation: blink 1.4s infinite; }
+.steps .s.fail { color: var(--bad); font-weight: 600; } .steps .s.fail .b { border-color: var(--bad); background: var(--bad); color: #fff; }
+.bar { height: 8px; border-radius: 999px; background: #e3e9f2; overflow: hidden; margin-top: 8px; }
+.bar > i { display: block; height: 100%; background: var(--main); border-radius: 999px; transition: width .4s; }
+.live .now { margin-top: 8px; font-size: 16px; }
+.live .say { margin-top: 10px; white-space: pre-wrap; }
+details.more { margin-top: 10px; }
+details.more summary { cursor: pointer; color: var(--main-dark); font-size: 15px; }
+pre.text { font-family: Menlo, Consolas, "Courier New", monospace; font-size: 14px; white-space: pre-wrap; word-break: break-word;
+  background: #fafbfc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0 0; max-height: 360px; overflow-y: auto; }
+table.list { border-collapse: collapse; width: 100%; }
+table.list th, table.list td { border-bottom: 1px solid var(--line); padding: 9px 10px; text-align: left; vertical-align: top; }
+table.list th { font-weight: 600; color: var(--muted); font-size: 15px; white-space: nowrap; }
+table.list td.num, table.list th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.list tr.click { cursor: pointer; } table.list tr.click:hover td { background: #f5f8fc; }
+.tablewrap { overflow-x: auto; }
+/* 表单（分步） */
+.wizard { max-width: 860px; }
+.wsteps { display: flex; gap: 8px; margin: 6px 0 18px; flex-wrap: wrap; }
+.wsteps span { padding: 5px 14px; border-radius: 999px; background: #eef1f4; color: var(--muted); font-size: 15px; }
+.wsteps span.on { background: var(--main); color: #fff; } .wsteps span.done { background: var(--ok-soft); color: var(--ok); }
+label.f { display: block; font-weight: 600; margin: 16px 0 6px; }
+input[type=text], input[type=password], input[type=number], select, textarea {
+  font: inherit; font-size: 16px; width: 100%; padding: 9px 12px; border: 1px solid var(--line2); border-radius: 10px; background: #fff; }
+input:focus, select:focus, textarea:focus { outline: 3px solid #cfe0ff; border-color: var(--main); }
+textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.choice { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.choice label { display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid var(--line2); border-radius: 12px; padding: 12px 14px; cursor: pointer; font-weight: 400; }
+.choice label:has(input:checked) { border-color: var(--main); background: var(--main-soft); }
+.choice b { display: block; } .choice small { color: var(--muted); font-size: 14px; }
+.checks label { display: inline-flex; align-items: center; gap: 8px; margin: 4px 20px 4px 0; cursor: pointer; }
+input[type=checkbox], input[type=radio] { width: 18px; height: 18px; flex: none; margin-top: 3px; }
+.drop { border: 2px dashed var(--line2); border-radius: 12px; padding: 18px; text-align: center; color: var(--muted); background: #fafcff; }
+.files { margin: 10px 0 0; padding: 0; list-style: none; }
+.files li { display: flex; gap: 10px; align-items: center; padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; margin-bottom: 6px; background: #fff; word-break: break-all; font-size: 15px; }
+.files li .spacer { min-width: 8px; }
+.chgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px 12px; }
+.chgrid label { display: flex; gap: 8px; align-items: flex-start; font-size: 15px; cursor: pointer; }
+.formbtns { display: flex; gap: 10px; margin-top: 22px; align-items: center; flex-wrap: wrap; }
+.msg { margin-top: 12px; padding: 10px 14px; border-radius: 10px; display: none; white-space: pre-wrap; }
+.msg.on { display: block; } .msg.err { background: var(--bad-soft); color: var(--bad); } .msg.info { background: var(--main-soft); }
+.callout { padding: 12px 14px; border-radius: 10px; background: var(--warn-soft); color: #5c3d00; margin-top: 10px; font-size: 16px; }
+.empty { padding: 30px; text-align: center; color: var(--muted); background: var(--card); border: 1px dashed var(--line2); border-radius: var(--radius); }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; }
+.kv > .k { color: var(--muted); white-space: nowrap; } .kv > .v { word-break: break-all; }
+a.link { color: var(--main-dark); text-decoration: underline; cursor: pointer; }
+#modal { position: fixed; inset: 0; background: rgba(20, 24, 30, .45); display: none; z-index: 20; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+#modal.on { display: flex; }
+#modalBox { background: var(--card); border-radius: 14px; width: min(900px, 100%); padding: 20px 24px 24px; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+#modalHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+#modalHead h2 { margin: 0; font-size: 20px; }
+#fatal { display: none; max-width: 760px; margin: 80px auto; padding: 30px; font-size: 20px; text-align: center; background: var(--card); border: 2px solid var(--bad); border-radius: 14px; color: var(--bad); }
+body.dead header, body.dead main { display: none; } body.dead #fatal { display: block; }
+#toast { position: fixed; right: 20px; bottom: 20px; max-width: 460px; padding: 12px 16px; border-radius: 12px; background: #2b3138; color: #fff; display: none; z-index: 30; white-space: pre-wrap; }
+#toast.on { display: block; } #toast.err { background: var(--bad); }
+@media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .toc { position: static; max-height: none; } .stats { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 680px) {
+  .hbar, main { padding-left: 16px; padding-right: 16px; }
+  .cards { grid-template-columns: 1fr; } .grid2, .choice, .two { grid-template-columns: 1fr; }
+  nav { margin-left: 0; width: 100%; } #conn { display: none; }
+  .steps .s { font-size: 12px; } .issue { flex-direction: column; gap: 4px; } .issue .where { min-width: 0; }
+  .doc .ln { padding-left: 36px; } .doc .ln .num { width: 28px; }
+}
+/* 补充资料待确认面板 */
+.changes-list { margin: 12px 0; max-height: 460px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: #fafbfc; }
+.change-item { border: 1px solid var(--line2); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: #fff; }
+.change-item:last-child { margin-bottom: 0; }
+.change-item.off { opacity: .55; }
+.change-item .ch-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.change-item label.ch-head { cursor: pointer; }
+.change-item .ch-head input { margin-top: 0; }
+.change-content { margin: 8px 0 0 28px; }
+.change-item.ro .change-content { margin-left: 0; }
+.ch-old, .ch-new { margin: 6px 0; }
+.ch-label { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 3px; }
+.ch-text { padding: 7px 10px; border-radius: 6px; background: #f5f8fc; white-space: pre-wrap; font-size: 15px; line-height: 1.5; word-break: break-all; }
+.ch-old .ch-text { background: #fff7f7; color: #964; }
+.ch-new .ch-text { background: #f6fcf8; color: #373; }
+.ch-why { margin-top: 6px; font-size: 14px; padding: 6px 10px; background: #fffbf0; border-radius: 6px; }
+</style>
+</head>
+<body>
+<div id="fatal"></div>
+<header>
+  <div class="hbar">
+    <div class="brand" id="brand" role="link" tabindex="0"><span class="logo">评</span>预评价编制工作台</div>
+    <span id="conn"><span class="dot"></span><span id="connText">正在连接…</span></span>
+    <nav id="nav">
+      <button data-page="home">报告</button>
+      <button data-page="history">做过的事</button>
+      <button data-page="settings">设置</button>
+    </nav>
+  </div>
+</header>
+<main>
+  <section class="page" id="page-home"></section>
+  <section class="page" id="page-history"></section>
+  <section class="page" id="page-settings"></section>
+</main>
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div id="modalBox">
+    <div id="modalHead"><h2 id="modalTitle"></h2><button id="modalClose" aria-label="关闭">关闭</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+/* SCRIPT-START */
+'use strict';
+// ---------- 小工具：建元素一律用 textContent，不拼外来文字 ----------
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === undefined || v === null || v === false) continue;
+      if (k === 'class') e.className = v;
+      else if (k === 'text') e.textContent = String(v);
+      else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), v);
+      else if (v === true) e.setAttribute(k, '');
+      else e.setAttribute(k, String(v));
+    }
+  }
+  for (const c of kids.flat()) {
+    if (c === undefined || c === null || c === false) continue;
+    e.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return e;
+}
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); return node; }
+const $ = (id) => document.getElementById(id);
+// 线条小图标（写在页面里，不用另外请求）
+const ICONS = {
+  plus: 'M12 5v14M5 12h14', back: 'M15 18l-6-6 6-6', folder: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  pdf: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4',
+  edit: 'M4 20h4L19 9l-4-4L4 16zM14 6l4 4', search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4',
+  play: 'M7 4l12 8-12 8z', stop: 'M6 6h12v12H6z', note: 'M6 3h9l4 4v14H6zM9 12h7M9 16h5',
+  file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5', refresh: 'M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7',
+  gear: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
+  image: 'M4 5h16v14H4zM4 16l5-5 4 4 3-3 4 4M15 9h.01',
+  check: 'M5 12l5 5L20 7', alert: 'M12 3l10 18H2zM12 10v5M12 18h.01', list: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+};
+const SVGNS = 'http://www.w3.org/2000/svg';
+function icon(name) {
+  const s = document.createElementNS(SVGNS, 'svg');
+  s.setAttribute('class', 'i'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('aria-hidden', 'true');
+  const p = document.createElementNS(SVGNS, 'path'); p.setAttribute('d', ICONS[name] || ''); s.appendChild(p);
+  return s;
+}
+function pill(kind, text) { return el('span', { class: 'pill ' + (kind || ''), text: text }); }
+function empty(text) { return el('div', { class: 'empty', text: text }); }
+function showMsg(box, text, isErr) { box.textContent = text; box.className = 'msg on ' + (isErr ? 'err' : 'info'); }
+let toastTimer = 0;
+function toast(msg, isErr) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'on' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, isErr ? 7000 : 3000);
+}
+// ---------- 接口 ----------
+class ApiErr extends Error { constructor(code, msg) { super(msg); this.code = code; } }
+let DEAD = false;
+function die() {
+  if (DEAD) return;
+  DEAD = true;
+  stopTimers();
+  $('fatal').textContent = '口令过期：请双击桌面上的“预评价编制工作台”重新打开';
+  document.body.classList.add('dead');
+}
+async function api(path, body, method) {
+  if (DEAD) throw new ApiErr(403, '口令过期');
+  const opt = { method: method || (body === undefined ? 'GET' : 'POST'), credentials: 'same-origin', cache: 'no-store', headers: {} };
+  if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+  let r;
+  try { r = await fetch(path, opt); }
+  catch (e) { throw new ApiErr(0, '连不上后台服务：请双击桌面上的“预评价编制工作台”'); }
+  let d = null;
+  try { d = await r.json(); } catch (e) { d = null; }
+  // 只有口令不对才整页提示；“这个文件不能打开”之类的 403 照常显示那句话
+  if (r.status === 403 && (!d || (typeof d['错误'] === 'string' && d['错误'].indexOf('口令不对') === 0))) { die(); throw new ApiErr(403, '口令过期'); }
+  if (!r.ok) {
+    const m = d && typeof d['错误'] === 'string' ? d['错误'] : '服务出错了（' + r.status + '）';
+    throw new ApiErr(r.status, m);
+  }
+  if (d === null) throw new ApiErr(r.status, '服务回的内容看不懂');
+  return d;
+}
+const q = (o) => '?' + new URLSearchParams(o);
+function errText(e) { return (e && e instanceof ApiErr) ? e.message : '出错了，请刷新页面再试'; }
+async function openPath(p) {
+  try { await api('/api/open', { '路径': p }); toast('已在电脑上打开'); }
+  catch (e) { if (!DEAD) toast(errText(e), true); }
+}
+async function pick(kind, multi, prompt) {
+  try { const d = await api('/api/pick', { '类型': kind, '多选': !!multi, '提示': prompt || '' }); return Array.isArray(d['路径']) ? d['路径'] : []; }
+  catch (e) { if (!DEAD) toast(errText(e), true); return []; }
+}
+let modalOnClose = null;
+function openModal(title, body, onClose) {
+  $('modalTitle').textContent = title;
+  clear($('modalBody')).appendChild(body);
+  $('modal').classList.add('on');
+  modalOnClose = onClose || null;
+  $('modalClose').focus();
+}
+function closeModal() {
+  $('modal').classList.remove('on');
+  clear($('modalBody'));
+  const f = modalOnClose; modalOnClose = null;
+  if (f) f();
+}
+$('modalClose').addEventListener('click', closeModal);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('modal').classList.contains('on')) closeModal(); });
+
+// ---------- 格式 ----------
+const pad = (n) => String(n).padStart(2, '0');
+function fmtTime(t) {
+  if (!t) return '';
+  const d = new Date(Number(t) * 1000);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  if (d.toDateString() === now.toDateString()) return '今天 ' + hm;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return '昨天 ' + hm;
+  return (d.getFullYear() !== now.getFullYear() ? d.getFullYear() + '年' : '') + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + hm;
+}
+function fmtDur(sec) {
+  if (sec === null || sec === undefined || isNaN(sec) || sec < 0) return '';
+  sec = Math.round(sec);
+  if (sec < 60) return sec + ' 秒';
+  const m = Math.floor(sec / 60);
+  if (m < 60) return m + ' 分钟';
+  return Math.floor(m / 60) + ' 小时 ' + (m % 60) + ' 分';
+}
+function fmtNum(n) { n = Number(n); return isFinite(n) ? n.toLocaleString('zh-CN') : ''; }
+const RATE = 7.2;   // 美元换人民币，只是估个大概
+function fmtYuan(usd) {
+  usd = Number(usd);
+  if (!isFinite(usd) || usd <= 0) return '';
+  const y = usd * RATE;
+  return '约 ¥' + (y >= 100 ? Math.round(y) : y.toFixed(1));
+}
+function baseName(p) { return String(p || '').replace(/[\\\/]+$/, '').split(/[\\\/]/).pop(); }
+function pathLink(p, label) {
+  return el('a', { class: 'link', href: '#', title: p, onclick: (e) => { e.preventDefault(); openPath(p); } }, label || p);
+}
+// 章号：文件名开头的 01、02_3 → “第1章”“2.3”
+function chapNo(f) {
+  const m = /^(\d{2})(?:_(\d+))?/.exec(f || '');
+  if (!m) return '';
+  return m[2] ? Number(m[1]) + '.' + Number(m[2]) : String(Number(m[1]));
+}
+function chapLabel(f) { const m = /^(\d{2})(?:_(\d+))?/.exec(f || ''); return m ? (m[2] ? '第' + Number(m[1]) + '章 第' + Number(m[2]) + '部分' : '第' + Number(m[1]) + '章') : f; }
+function chapName(f, title) {
+  // 标题里本来就有章节号（“# 4 职业病危害因素……”），去掉号只留名字
+  const t = String(title || '').replace(/^[\d.\s]+/, '').trim();
+  return t || String(f || '').replace(/^\d{2}(_\d+)?_?/, '').replace(/\.md$/, '');
+}
+// 检查条目“第38行 ……”拆成行号和说明
+function splitLine(s) { const m = /^第(\d+)行\s*(.*)$/.exec(String(s || '')); return m ? { line: Number(m[1]), text: m[2] } : { line: 0, text: String(s || '') }; }
+// ---------- 导航：网址 # 后面记住在哪一页，刷新不丢 ----------
+// #home  #p/<项目文件夹>/<页签>/<文件>  #job/<号>  #new  #revise/<项目>  #review/<项目>  #history  #settings
+let timers = [];
+function stopTimers() { timers.forEach(clearTimeout); timers = []; }
+function later(fn, ms) { const id = setTimeout(fn, ms); timers.push(id); return id; }
+let routeSeq = 0;
+const stale = (seq) => seq !== routeSeq || DEAD;
+function go(hash) { if (location.hash === '#' + hash) route(); else location.hash = hash; }
+function enc(s) { return encodeURIComponent(s); }
+function projHash(path, tab, file, line) { return 'p/' + enc(path) + '/' + (tab || 'doc') + (file ? '/' + enc(file) + (line ? '/' + line : '') : ''); }
+const PAGE_OF = { home: 'home', p: 'home', job: 'home', new: 'home', revise: 'home', review: 'home', history: 'history', settings: 'settings' };
+function route() {
+  if (DEAD) return;
+  stopTimers();
+  routeSeq++;
+  const seq = routeSeq;
+  const parts = location.hash.replace(/^#/, '').split('/').map((x) => { try { return decodeURIComponent(x); } catch (e) { return ''; } });
+  let page = parts[0] || 'home';
+  if (!PAGE_OF[page]) page = 'home';
+  const sect = PAGE_OF[page];
+  document.querySelectorAll('section.page').forEach((s) => s.classList.toggle('on', s.id === 'page-' + sect));
+  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.page === sect));
+  const box = clear($('page-' + sect));
+  window.scrollTo(0, 0);
+  if (page === 'p') showProject(box, seq, parts[1], parts[2] || 'doc', parts[3] || '', Number(parts[4] || 0));
+  else if (page === 'job') showJob(box, seq, parts[1]);
+  else if (page === 'new') formNew(box, seq);
+  else if (page === 'revise') formRevise(box, seq, parts[1] || '', parts.slice(2).join('/'));
+  else if (page === 'review') formReview(box, seq, parts[1] || '');
+  else if (page === 'history') showHistory(box, seq);
+  else if (page === 'settings') showSettings(box, seq);
+  else showHome(box, seq);
+}
+document.querySelectorAll('#nav button').forEach((b) => b.addEventListener('click', () => go(b.dataset.page)));
+$('brand').addEventListener('click', () => go('home'));
+$('brand').addEventListener('keydown', (e) => { if (e.key === 'Enter') go('home'); });
+window.addEventListener('hashchange', route);
+
+// ---------- 连接状态 ----------
+let SETTINGS = null;
+async function loadSettings() {
+  try {
+    SETTINGS = await api('/api/settings');
+    $('conn').className = SETTINGS['有密钥'] ? 'ok' : 'bad';
+    $('connText').textContent = SETTINGS['有密钥'] ? '模型已连上' : '还没填密钥，到“设置”里填';
+  } catch (e) {
+    if (DEAD) return SETTINGS;
+    $('conn').className = 'bad';
+    $('connText').textContent = errText(e);
+  }
+  return SETTINGS;
+}
+// ---------- 任务说成人话 ----------
+const RUNNING = ['进行', '等待', '排队'];
+const AGAIN_KINDS = ['新报告', '事实库', '补资料', '按新资料改', '类比资料'];   // 能“接着做”的任务（和网页服务的 AGAIN 一样）
+const KIND_NAME = { '新报告': '写新报告', '审稿': '全文审稿', '改稿': '照意见修改', '出稿': '出 PDF', '事实库': '整理项目情况', '提炼标准': '更新写作规矩', '配图': '配图', '补资料': '补充资料', '按新资料改': '按新资料改', '类比资料': '补类比资料', '自测': '自测' };
+function kindName(k) { return KIND_NAME[k] || k || ''; }
+function stateView(s) {
+  if (s === '进行') return ['run', '正在做'];
+  if (s === '等待' || s === '排队') return ['run', '排队中'];
+  if (s === '完成') return ['ok', '做完了'];
+  if (s === '失败') return ['bad', '出错停了'];
+  if (s === '中断') return ['bad', '中途停了'];
+  if (s === '已取消') return ['', '已停下'];
+  if (s === '跳过') return ['', '跳过'];
+  return ['', s || ''];
+}
+function statePill(s) { const v = stateView(s); return pill(v[0], v[1]); }
+// _后来做完：同一份报告后来又做过同一类事并且做完了（比如这次断了，后来已经接着做完），不再让接着做，免得花两遍钱
+function canAgain(j) { return AGAIN_KINDS.indexOf(j['类别']) >= 0 && ['失败', '中断', '已取消'].indexOf(j['状态']) >= 0 && !j._后来做完; }
+function markLater(j, arr) {
+  if (!j || !j['项目'] || !Array.isArray(arr)) return j;
+  j._后来做完 = arr.some((x) => x['号'] !== j['号'] && x['项目'] === j['项目'] && x['类别'] === j['类别'] && (x['建立'] || 0) > (j['建立'] || 0) && x['状态'] === '完成');
+  return j;
+}
+// 每类任务的几大步：后台“阶段”对到这几步上
+const FLOW = {
+  '新报告': [['读资料', ['准备']], ['整理项目情况', ['事实']], ['列岗位和危害因素', ['骨架']], ['逐章写', ['写作']], ['配图', ['配图']], ['自查', ['检查']], ['审稿', ['逐章审', '跨章', '复查']], ['出 PDF', ['出稿']]],
+  '审稿': [['准备', ['准备']], ['逐章审', ['逐章审']], ['前后各章对一遍', ['跨章']], ['复查', ['复查']], ['出 PDF', ['出稿']]],
+  '改稿': [['理解意见', ['定口径']], ['逐章改', ['修改']], ['复查', ['复查']], ['出 PDF', ['出稿']]],
+  '出稿': [['检查', ['检查']], ['生成 Word、转 PDF、逐页核对', ['出稿']]],
+  '事实库': [['读资料、整理、核对', ['事实']]],
+  '配图': [['画风频玫瑰图、截区域位置图和平面布置图、排工艺流程图', ['配图']]],
+  '提炼标准': [['定写作规矩', ['口径']], ['各章要点', ['各章']], ['补漏', ['补漏']]],
+  '补资料': [['拷资料、转文字', ['准备']], ['对照事实库，列出变化', ['事实']]],
+  '按新资料改': [['改事实库、口径表', ['事实']], ['改受影响的章', ['修改']], ['自查', ['检查']], ['出 PDF', ['出稿']]],
+  '类比资料': [['拷资料、转文字', ['准备']], ['摘类比事实', ['类比事实']], ['写第3章', ['第3章']], ['改引用第3章的地方', ['修改']], ['自查', ['检查']]],
+};
+function stepName(n) {
+  n = String(n || '');
+  let m;
+  if ((m = /^摘事实(?: 第(\d+)批)?/.exec(n))) return '读资料' + (m[1] ? '（第' + m[1] + '批）' : '');
+  if (/^汇总事实库/.test(n)) return '整理项目情况';
+  if ((m = /^核对事实库(?: 第(\d+)批)?/.exec(n))) return '对照资料核对' + (m[1] ? '（第' + m[1] + '批）' : '') + (/重来/.test(n) ? '，重试' : '');
+  if (/^填项目信息/.test(n)) return '读项目基本信息';
+  if (/^岗位因素表/.test(n)) return '列岗位和危害因素';
+  if ((m = /^写 (\S+\.md)/.exec(n))) return '写' + chapLabel(m[1]) + ' ' + chapName(m[1]);
+  if ((m = /^审 (\S+\.md)/.exec(n))) return '审' + chapLabel(m[1]) + ' ' + chapName(m[1]);
+  if ((m = /^改 .*?(\d{2}(?:_\d+)?_\S*\.md)/.exec(n))) return '改' + chapLabel(m[1]);
+  if ((m = /^摘新资料(?: 第(\d+)批)?/.exec(n))) return '对照新资料' + (m[1] ? '（第' + m[1] + '批）' : '');
+  if ((m = /^按新资料改 (\S+\.md)/.exec(n))) return '按新资料改' + chapLabel(m[1]) + ' ' + chapName(m[1]);
+  if ((m = /^摘类比事实(?: 第(\d+)批)?/.exec(n))) return '摘类比事实' + (m[1] ? '（第' + m[1] + '批）' : '');
+  if ((m = /^改引用 (\S+\.md)/.exec(n))) return '改' + chapLabel(m[1]) + ' ' + chapName(m[1]) + '里引用第3章的地方';
+  if (/^跨章一致/.test(n)) return '前后各章对一遍';
+  if (/^定口径/.test(n)) return '理解修改意见';
+  if (/^出稿/.test(n)) return '生成 Word、转 PDF、逐页核对';
+  if (/^配图/.test(n)) return '配图';
+  if (/^排工艺流程图（改）/.test(n)) return '排工艺流程图（按检查结果改一遍）';
+  if (/^排工艺流程图/.test(n)) return '排工艺流程图';
+  return n;
+}
+// 出错的话：先说怎么回事、怎么办，原话放到“细节”里
+function errSay(j) {
+  const e = String(j['错误'] || '');
+  const again = canAgain(j);
+  if (j._后来做完) return '这次中途停了，后来已经接着做完了，不用再管它。';
+  const tip = again ? '可以点“接着做”：上次做完的步骤不重做，已经花的钱不白花。' : '可以重新开始这个任务。';
+  if (/检查有错误/.test(e)) {
+    const n = (/(\d+)\s*条/.exec(e) || [])[1];
+    return '正文里还有 ' + (n || '几') + ' 处必须改的问题，所以没有出 PDF。到这份报告的“问题清单”里看是哪几处，改掉再出。';
+  }
+  if (/中途断了|不是合法 JSON|连不上|Connection|超时|timed out/i.test(e)) return '网络那头中途断了，这一步没做成。' + tip;
+  if (j['状态'] === '中断' && !e) return '任务中途停了：程序被关掉或电脑休眠时会这样。' + tip;
+  if (j['状态'] === '已取消') return '已经停下了。' + (again ? tip : '');
+  return (e || '任务没做完就停了') + '\n' + tip;
+}
+// ---------- 首页：报告列表 ----------
+function byChapter(chapters) {
+  // 第2章分几个文件：合成一格
+  const out = [];
+  for (const c of chapters || []) {
+    const k = String(c['文件']).slice(0, 2);
+    let g = out.find((x) => x.k === k);
+    if (!g) { g = { k, files: [] }; out.push(g); }
+    g.files.push(c);
+  }
+  return out;
+}
+function runningFiles(job) {
+  return (job && Array.isArray(job['进行中']) ? job['进行中'] : []).map((n) => (/(\d{2}(?:_\d+)?_\S*\.md)/.exec(String(n)) || [])[1]).filter(Boolean);
+}
+function chips(chapters, job) {
+  const now = runningFiles(job).map((f) => f.slice(0, 2));
+  return el('div', { class: 'chips', 'aria-label': '各章情况' }, byChapter(chapters).map((g) => {
+    const errs = g.files.reduce((n, c) => n + (c['错误'] || []).length, 0);
+    const done = g.files.every((c) => c['写好']);
+    const cls = now.indexOf(g.k) >= 0 ? 'run' : errs ? 'err' : done ? 'done' : '';
+    const say = '第' + Number(g.k) + '章：' + (cls === 'run' ? '正在写' : errs ? '有 ' + errs + ' 处必须改' : done ? '写好了' : '还没写');
+    return el('span', { class: 'chip ' + cls, title: say, 'aria-label': say, text: Number(g.k) });
+  }));
+}
+function projectSay(p, d, job, last) {
+  // 一句话说现在怎样，返回 [颜色, 文字]
+  if (job) {
+    const doing = (job['进行中'] || []).map(stepName).slice(0, 2).join('、');
+    return ['run', '正在' + kindName(job['类别']) + (doing ? '：' + doing : '')];
+  }
+  if (last && canAgain(last)) return ['bad', '上次' + kindName(last['类别']) + '中途停了，可以接着做'];
+  const err = Number((d && d['错误']) ?? p['错误'] ?? 0);
+  if (p['存在'] === false) return ['bad', '文件夹找不到了'];
+  if (d) {
+    const all = d['章节'].length, ok = d['章节'].filter((c) => c['写好']).length;
+    if (all && ok < all) return ['warn', '写好 ' + ok + ' / ' + all + ' 个文件'];
+  }
+  if (err > 0) return ['bad', '有 ' + err + ' 处必须改的问题，改完才能出 PDF'];
+  if (p['PDF']) return ['ok', '已出 PDF' + (p['页数'] ? '，' + p['页数'] + ' 页' : '') + '（' + fmtTime(p['PDF时间']) + '）'];
+  return ['warn', '正文写好了，还没出 PDF'];
+}
+function codeOf(name) { return (/(AT-\d{4}-[A-Z]?\d+)/.exec(name || '') || [])[1] || ''; }
+function shortName(name) { return String(name || '').replace(/[（(]\s*AT-\d{4}-[A-Z]?\d+\s*[)）]/, '').trim(); }
+let PROJECTS = [];
+async function loadProjects() {
+  const d = await api('/api/overview');
+  PROJECTS = Array.isArray(d['项目']) ? d['项目'] : [];
+  return PROJECTS;
+}
+async function showHome(box, seq) {
+  box.appendChild(el('div', { class: 'homebar' },
+    el('div', { style: 'flex:1;min-width:260px' }, el('h2', { text: '我的报告' }),
+      el('p', { class: 'lead', text: '点一份报告进去看各章、问题和改过的地方。小方格是第1～11章：绿色写好了，红色有必须改的问题，蓝色正在写，空心还没写。' })),
+    el('button', { class: 'main big', onclick: () => go('new') }, icon('plus'), '写一份新报告')));
+  const grid = box.appendChild(el('div', { class: 'cards' }, el('p', { class: 'muted', text: '正在读取，检查正文要几秒钟…' })));
+  let jobsArr = [];
+  try { [, jobsArr] = await Promise.all([loadProjects(), api('/api/jobs')]); }
+  catch (e) { if (!stale(seq)) clear(grid).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+  if (stale(seq)) return;
+  clear(grid);
+  const sameRoot = (a, b) => String(a || '').replace(/[\\\/]+$/, '') === String(b || '').replace(/[\\\/]+$/, '');
+  for (const p of PROJECTS) {
+    const mine = (Array.isArray(jobsArr) ? jobsArr : []).filter((j) => sameRoot(j['项目'], p['文件夹']));
+    const job = mine.find((j) => RUNNING.indexOf(j['状态']) >= 0);
+    const last = markLater(mine[0], mine);
+    const sayBox = el('div', { class: 'say' });
+    const chipBox = el('div', { class: 'chips' }, el('span', { class: 'faint', style: 'font-size:14px', text: '读取各章…' }));
+    const draw = (d) => { const s = projectSay(p, d, job, last); clear(sayBox).appendChild(pill(s[0], s[1])); };
+    draw(null);
+    const code = codeOf(p['项目']);
+    const open = () => go(projHash(p['文件夹']));
+    grid.appendChild(el('div', { class: 'pcard', role: 'link', tabindex: '0', onclick: open, onkeydown: (e) => { if (e.key === 'Enter') open(); } },
+      el('div', { class: 't', text: shortName(p['项目']) || baseName(p['文件夹']) }),
+      el('div', { class: 'meta' }, code ? el('span', { text: '编号 ' + code }) : null, el('span', { text: p['方法'] || '' }),
+        p['正文修改'] ? el('span', { text: '正文改于 ' + fmtTime(p['正文修改']) }) : null),
+      sayBox, chipBox));
+    if (p['存在'] === false) { clear(chipBox); continue; }
+    api('/api/project' + q({ '路径': p['文件夹'] })).then((d) => {
+      if (stale(seq)) return;
+      clear(chipBox).appendChild(chips(d['章节'], job));
+      draw(d);
+    }).catch(() => { if (!stale(seq)) clear(chipBox); });
+  }
+  grid.appendChild(el('div', { class: 'pcard newcard', role: 'button', tabindex: '0', onclick: () => go('new'), onkeydown: (e) => { if (e.key === 'Enter') go('new'); } },
+    icon('plus'), el('div', { text: '写一份新报告' }), el('div', { class: 'note', style: 'font-weight:400', text: '把可研、初设等资料交给程序，它会一章一章写出来' })));
+  if (jobsArr.some && jobsArr.some((j) => RUNNING.indexOf(j['状态']) >= 0)) later(() => { if (!stale(seq)) route(); }, 15000);
+}
+// ---------- 进度条（报告页、任务页共用） ----------
+function stageIndex(flow, phase) { return flow.findIndex((g) => g[1].indexOf(phase) >= 0); }
+function liveBox(j, opts) {
+  opts = opts || {};
+  const kind = j['类别'];
+  const running = RUNNING.indexOf(j['状态']) >= 0;
+  const failed = ['失败', '中断'].indexOf(j['状态']) >= 0;
+  const u = j['用量'] || {};
+  const box = el('div', { class: 'live' + (failed ? ' fail' : j['状态'] === '完成' ? ' done' : ''), 'aria-live': 'polite' });
+  const end = j['结束'] || (running ? Date.now() / 1000 : null);
+  const took = j['开始'] && end ? fmtDur(end - j['开始']) : '';
+  box.appendChild(el('div', { class: 'top' },
+    el('span', { class: 'what', text: kindName(kind) }), statePill(j['状态']),
+    el('span', { class: 'note', text: [fmtTime(j['建立']), took ? '用了 ' + took : '', fmtYuan(u['美元']) ? '花了' + fmtYuan(u['美元']).slice(1) + '（估算）' : ''].filter(Boolean).join(' · ') }),
+    el('span', { class: 'spacer' }), opts.actions || null));
+  const flow = (FLOW[kind] || []).slice();
+  if (flow.length > 1) {
+    let at = stageIndex(flow, j['阶段']);
+    if (at < 0) at = running ? 0 : (j['状态'] === '完成' ? flow.length - 1 : 0);
+    box.appendChild(el('div', { class: 'steps' }, flow.map((g, i) => {
+      let cls = '';
+      if (i < at || (i === at && j['状态'] === '完成')) cls = 'done';
+      else if (i === at && running) cls = 'now';
+      else if (i === at && failed) cls = 'fail';
+      return el('div', { class: 's ' + cls }, el('span', { class: 'b', text: cls === 'done' ? '✓' : cls === 'fail' ? '!' : String(i + 1) }), g[0]);
+    })));
+  }
+  const ss = Array.isArray(j['步骤']) ? j['步骤'] : [];
+  // 写章、审章：数一数做完几个
+  const unit = j['阶段'] === '写作' ? /^写 \S+\.md/ : j['阶段'] === '逐章审' ? /^审 \S+\.md/ : null;
+  if (unit && (running || failed)) {
+    const mine = ss.filter((s) => unit.test(s['名称'] || ''));
+    const done = mine.filter((s) => s['状态'] === '完成').length;
+    const total = opts.total || 0;
+    const word = j['阶段'] === '写作' ? '写好' : '审完';
+    box.appendChild(el('div', { class: 'now', text: word + ' ' + done + (total ? ' / ' + total : '') + ' 个文件' }));
+    if (total) box.appendChild(el('div', { class: 'bar' }, el('i', { style: 'width:' + Math.min(100, Math.round(done * 100 / total)) + '%' })));
+  }
+  if (running) {
+    const doing = ss.filter((s) => s['状态'] === '进行').map((s) => stepName(s['名称']));
+    const names = doing.length ? doing : (j['进行中'] || []).map(stepName);
+    box.appendChild(el('div', { class: 'now' }, el('b', { text: '正在：' }), names.length ? names.slice(0, 5).join('、') + (names.length > 5 ? ' 等 ' + names.length + ' 件' : '') : '准备中…'));
+  }
+  if (failed || j['状态'] === '已取消') box.appendChild(el('div', { class: 'say' + (failed ? ' bad' : ''), text: errSay(j) }));
+  if (opts.result) box.appendChild(opts.result);
+  return box;
+}
+async function againJob(jid, btn) {
+  if (!window.confirm('接着做会接着调用模型、要花钱；上次做完的步骤不重做。现在接着做？')) return;
+  if (btn) btn.disabled = true;
+  try { const d = await api('/api/jobs/' + enc(jid) + '/again', {}); toast('已经接着做了'); go('job/' + d['号']); }
+  catch (e) { if (!DEAD) toast(errText(e), true); }
+  finally { if (btn) btn.disabled = false; }
+}
+async function cancelJob(jid, btn) {
+  if (!window.confirm('确定停下？正在进行的这一步做完后停，已经改好的部分会保留。')) return;
+  if (btn) btn.disabled = true;
+  try { const d = await api('/api/jobs/' + enc(jid) + '/cancel', {}); toast(d['说明'] || '已请求停下', !d['取消']); }
+  catch (e) { if (!DEAD) toast(errText(e), true); }
+  finally { if (btn) btn.disabled = false; }
+}
+function jobButtons(j) {
+  const out = [];
+  if (RUNNING.indexOf(j['状态']) >= 0) { const b = el('button', { class: 'danger small' }, icon('stop'), '停下'); b.addEventListener('click', () => cancelJob(j['号'], b)); out.push(b); }
+  if (canAgain(j)) { const b = el('button', { class: 'main' }, icon('play'), '接着做'); b.addEventListener('click', () => againJob(j['号'], b)); out.push(b); }
+  return out.length ? el('div', { class: 'acts' }, out) : null;
+}
+// ---------- 做完以后：结果说成几句话 ----------
+function resultLines(j) {
+  const r = j['结果'];
+  if (!r || typeof r !== 'object') return [];
+  const k = j['类别'], out = [];
+  const chk = (c) => c ? '自查：必须改的 ' + (c['错误'] || 0) + ' 处、建议看看的 ' + (c['提示'] || 0) + ' 处' : '';
+  const pub = (p) => p ? (p['通过'] ? 'PDF 出好了，共 ' + (p['页数'] || '?') + ' 页，目录页码逐页核对过' : 'PDF 没出成，核对没通过') : '';
+  if (k === '新报告') {
+    if (typeof r['写作'] === 'number') out.push('写好 ' + r['写作'] + ' 个文件');
+    else if (r['写作'] && typeof r['写作'] === 'object') out.push('写好 ' + Object.keys(r['写作']).length + ' 个文件');
+    if (Array.isArray(r['没写成']) && r['没写成'].length) out.push('没写成：' + r['没写成'].map(chapLabel).join('、'));
+    if (r['检查']) out.push(chk(r['检查']));
+    if (r['审稿']) out.push('审稿：必改 ' + (r['审稿']['必改'] || 0) + ' 条、建议 ' + (r['审稿']['建议'] || 0) + ' 条，已经改了 ' + (r['审稿']['已改'] || 0) + ' 处');
+    if (r['出稿']) out.push(pub(r['出稿']));
+  } else if (k === '审稿') {
+    if ('审了' in r) out.push('审了 ' + r['审了'] + ' 个文件：必改 ' + (r['必改'] || 0) + ' 条、建议 ' + (r['建议'] || 0) + ' 条，改了 ' + (r['已改'] || 0) + ' 处');
+    if (Array.isArray(r['没审成']) && r['没审成'].length) out.push('没审成：' + r['没审成'].map((x) => chapLabel(String(x))).join('、'));
+    if (r['出稿']) out.push(pub(r['出稿']));
+  } else if (k === '改稿') {
+    if (r['口径号'] && /^K\d+/.test(r['口径号'])) out.push('这条意见记成了写作规矩 ' + r['口径号'] + '：' + (r['标题'] || '') + '，以后的报告都照这样写');
+    else if (r['标题']) out.push('这条意见只管这份报告：' + r['标题']);
+    for (const p of r['项目'] || []) {
+      out.push((p['名称'] || '') + '：改了 ' + (p['改'] || 0) + ' 处' + (p['检查'] ? '；' + chk(p['检查']) : '') + (p['出稿'] ? '；' + pub(p['出稿']) : '') + (p['说明'] ? '（' + p['说明'] + '）' : ''));
+    }
+  } else if (k === '出稿') {
+    out.push(pub(r));
+  } else if (k === '配图') {
+    if ((r['画了'] || []).length) out.push('画了：' + r['画了'].join('、'));
+    if ((r['截了'] || []).length) out.push('从资料里截了：' + r['截了'].join('、'));
+    if ((r['没找到'] || []).length) out.push('没找到：' + r['没找到'].join('、') + '（已列进资料欠缺清单）');
+    if (r['检查']) out.push(chk(r['检查']));
+  } else if (k === '事实库') {
+    out.push('项目情况整理好了：' + (r['事实'] || 0) + ' 条，补充 ' + (r['补充'] || 0) + ' 条、更正 ' + (r['更正'] || 0) + ' 条');
+  } else if (k === '补资料') {
+    const c = r['变化'] || {}, n = supCount(r);
+    out.push('对照了新资料：' + (r['新资料'] || []).join('、'));
+    if ((r['没转'] || []).length) out.push('没转成文字、没对照：' + r['没转'].join('；') + '（扫描件要先识别成文字，或者要一份能复制文字的）');
+    if (!n) out.push('新资料和事实库没有出入，不用改正文');
+    else {
+      out.push('和事实库不一样的 ' + n + ' 条：新增 ' + (c['新增'] || 0) + '、更正 ' + (c['更正'] || 0) + '、补上可研没写的 ' + (c['补上'] || 0) + '。事实库和正文都还没动');
+      const files = r['要改'] || [];
+      out.push(files.length ? '全部采用的话要改 ' + files.length + ' 个文件：' + files.map(chapLabel).join('、') + (fmtYuan(r['预计美元']) ? '，大约要花' + fmtYuan(r['预计美元']).slice(1) : '') : '只改事实库，不用改正文');
+      out.push('下一步：点下面的“看变化、确认”，勾掉不要的，再点“按这些改”');
+    }
+  } else if (k === '类比资料') {
+    const c3 = r['第3章'] || {};
+    out.push('类比资料：' + (r['类比资料'] || []).join('、'));
+    if ((r['没转'] || []).length) out.push('没转成文字、没用上：' + r['没转'].join('；'));
+    if ((r['移出'] || []).length) out.push('以前当本项目资料记进来的 ' + r['移出'].join('、') + ' 已挪到“资料/类比/移出”，不再算本项目资料');
+    out.push('第3章按类比资料重写了，' + fmtNum(c3['字数']) + ' 字' + (c3['待填'] ? '，还有 ' + c3['待填'] + ' 处【待填】' : '，没有【待填】了'));
+    const refs = Object.entries(r['引用'] || {}).filter((x) => x[1] > 0);
+    out.push(refs.length ? '引用第3章的地方：' + refs.map((x) => chapLabel(x[0]) + ' ' + x[1] + ' 处').join('、') : '别的章引用第3章的地方不用改');
+    if ((r['跳过'] || []).length) out.push('没改的：' + r['跳过'].join('；'));
+    if (r['检查']) out.push(chk(r['检查']));
+  } else if (k === '按新资料改') {
+    out.push('采用了 ' + (r['采用'] || 0) + ' 条变化：事实库、口径表改了 ' + (r['事实库'] || 0) + ' 条，岗位因素表改了 ' + (r['岗位因素表'] || 0) + ' 处');
+    const body = Object.entries(r['正文'] || {}).filter((x) => x[1] > 0);
+    out.push(body.length ? '正文：' + body.map((x) => chapLabel(x[0]) + ' ' + x[1] + ' 处').join('、') : '正文没有要改的地方');
+    if ((r['跳过'] || []).length) out.push('没改的：' + r['跳过'].join('；'));
+    if (r['检查']) out.push(chk(r['检查']));
+    if (r['出稿']) out.push(pub(r['出稿']));
+  }
+  return out.filter(Boolean);
+}
+function supCount(r) { const c = (r && r['变化']) || {}; return (c['新增'] || 0) + (c['更正'] || 0) + (c['补上'] || 0); }
+function resultBox(j, onProject) {
+  const lines = resultLines(j);
+  const r = j['结果'];
+  if (!lines.length && (r === null || r === undefined)) return null;
+  const box = el('div', { style: 'margin-top:12px' });
+  if (lines.length) box.appendChild(el('ul', { style: 'margin:0;padding-left:22px' }, lines.map((x) => el('li', { text: x }))));
+  const acts = el('div', { class: 'acts', style: 'margin-top:10px' });
+  if (j['项目'] && onProject !== true) acts.appendChild(el('button', { onclick: () => go(projHash(j['项目'], 'doc')) }, icon('file'), '看这份报告'));
+  if (j['项目'] && j['类别'] === '类比资料' && r && r['第3章'] && r['第3章']['文件']) acts.appendChild(el('button', { class: 'main', onclick: () => go(projHash(j['项目'], 'doc', r['第3章']['文件'])) }, icon('file'), '看第3章'));
+  if (j['项目'] && ['审稿', '改稿', '新报告', '按新资料改', '类比资料'].indexOf(j['类别']) >= 0) acts.appendChild(el('button', { onclick: () => go(projHash(j['项目'], 'changes')) }, icon('edit'), '看改过的地方'));
+  if (j['项目'] && j['类别'] === '补资料' && j['状态'] === '完成' && supCount(r) > 0) acts.appendChild(el('button', { class: 'main', onclick: () => showSupplementForm({ '文件夹': j['项目'] }) }, icon('list'), '看变化、确认'));
+  if (r && r['交稿说明']) acts.appendChild(el('button', { onclick: () => openPath(r['交稿说明']) }, icon('note'), '交稿说明'));
+  if (acts.childNodes.length) box.appendChild(acts);
+  return box;
+}
+// ---------- 正文显示：简单排版，每行带行号，有问题的行标色 ----------
+function inline(text) {
+  // **粗体** 和 <br>；别的照原样当文字
+  const frag = document.createDocumentFragment();
+  String(text).split(/(<br\s*\/?>)/i).forEach((part, i) => {
+    if (i % 2) { frag.appendChild(el('br')); return; }
+    part.split('**').forEach((s, k) => { if (s) frag.appendChild(k % 2 ? el('b', { text: s }) : document.createTextNode(s)); });
+  });
+  return frag;
+}
+function cells(ln) { return ln.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map((c) => c.trim().replace(/\\\|/g, '|')); }
+function renderDoc(text, flags) {
+  // flags：{行号: [{bad: 是不是必须改, text}]}
+  const lines = String(text).split('\n');
+  const box = el('div', { class: 'doc' });
+  const mark = (node, from, to) => {
+    const hit = [];
+    for (let n = from; n <= to; n++) if (flags[n]) hit.push(...flags[n]);
+    if (hit.length) {
+      node.classList.add(hit.some((h) => h.bad) ? 'flagbad' : 'flag');
+      hit.slice(0, 4).forEach((h) => node.appendChild(el('span', { class: 'why' + (h.bad ? '' : ' w'), text: (h.bad ? '必须改：' : '看看：') + h.text })));
+    }
+    for (let n = from; n <= to; n++) if (n !== from) { const a = el('span', { id: 'L' + n }); node.appendChild(a); }
+    return node;
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i], no = i + 1;
+    const wrap = (inner, last) => mark(el('div', { class: 'ln', id: 'L' + no }, el('span', { class: 'num', text: no }), inner), no, last || no);
+    if (/^\s*\|/.test(ln)) {               // 表格：连着的几行拼一张表
+      let j = i;
+      while (j + 1 < lines.length && /^\s*\|/.test(lines[j + 1])) j++;
+      const rows = lines.slice(i, j + 1).filter((r) => !/^\s*\|[\s:|-]+\|\s*$/.test(r));
+      const t = el('table', null, rows.map((r, k) => el('tr', null, cells(r).map((c) => el(k === 0 ? 'th' : 'td', null, inline(c))))));
+      box.appendChild(wrap(el('div', { class: 'tbl' }, t), j + 1));
+      i = j; continue;
+    }
+    if (/^\s*<!--/.test(ln)) {              // 注释（可能跨几行）
+      let j = i;
+      while (j < lines.length - 1 && !/-->/.test(lines[j])) j++;
+      box.appendChild(wrap(el('details', { class: 'cmt' }, el('summary', { style: 'cursor:pointer', text: '编写备注（出 PDF 时不印出来）' }),
+        el('div', { text: lines.slice(i, j + 1).join(' ').replace(/<!--|-->/g, '').trim() })), j + 1));
+      i = j; continue;
+    }
+    let m;
+    if ((m = /^(#{1,4})\s+(.*)$/.exec(ln))) { box.appendChild(wrap(el('h' + m[1].length, null, inline(m[2])))); continue; }
+    if ((m = /^\s*!\[([^\]]*)\]\(([^)]*)\)/.exec(ln))) { box.appendChild(wrap(el('div', { class: 'img', text: '［插图：' + (m[1] || baseName(m[2])) + '］' }))); continue; }
+    if (!ln.trim()) { if (flags[no]) box.appendChild(wrap(el('div', null, '（空行）'))); continue; }
+    const cap = /^\s*(\*\*)?[表图]\s*\d+(\.\d+)*-\d+/.test(ln);
+    box.appendChild(wrap(el('div', { class: cap ? 'cap' : '' }, inline(ln))));
+  }
+  return box;
+}
+function flagsOf(c) {
+  const f = {};
+  const add = (arr, bad) => (arr || []).forEach((s) => { const x = splitLine(s); (f[x.line] = f[x.line] || []).push({ bad, text: x.text }); });
+  add(c['错误'], true); add(c['提示'], false);
+  return f;
+}
+// ---------- 报告页 ----------
+let PREFILL = '';     // “交给程序改”带过去的意见
+async function startJob(kind, params, project) {
+  const body = { '类别': kind, '参数': params };
+  if (project) body['项目'] = project;
+  const d = await api('/api/jobs', body);
+  toast('已经开始了');
+  return d;
+}
+async function publishNow(d, btn) {
+  if (d['错误'] > 0) {
+    toast('还有 ' + d['错误'] + ' 处必须改的问题，改完才能出 PDF。已经切到问题清单。', true);
+    go(projHash(d['文件夹'], 'issues'));
+    return;
+  }
+  if (!window.confirm('现在出 PDF？生成 Word、转 PDF、逐页核对，大概要几分钟，不花模型的钱。')) return;
+  btn.disabled = true;
+  try { const j = await startJob('出稿', {}, d['文件夹']); go('job/' + j['号']); }
+  catch (e) { if (!DEAD) toast(errText(e), true); }
+  finally { btn.disabled = false; }
+}
+async function showProject(box, seq, path, tab, file, line) {
+  if (!path) return go('home');
+  box.appendChild(el('div', { class: 'crumb' }, el('button', { class: 'ghost', onclick: () => go('home') }, icon('back'), '全部报告')));
+  const body = box.appendChild(el('div', null, el('p', { class: 'muted', text: '正在读取这份报告…' })));
+  let d;
+  try { d = await api('/api/project' + q({ '路径': path })); }
+  catch (e) { if (!stale(seq)) clear(body).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+  if (stale(seq)) return;
+  clear(body);
+  const jobsHere = d['做过的事'] || [];
+  const job = jobsHere.find((j) => RUNNING.indexOf(j['状态']) >= 0);
+  const busy = !!job;
+  // 头
+  const pubBtn = el('button', { disabled: busy }, icon('pdf'), '出 PDF');
+  pubBtn.addEventListener('click', () => publishNow(d, pubBtn));
+  const figBtn = el('button', { disabled: busy, title: '画风频玫瑰图，从资料里截区域位置图和平面布置图；第2.5节没有工艺流程图的，请模型排一张。都放进第2章' }, icon('image'), '配图');
+  figBtn.addEventListener('click', async () => {
+    if (!window.confirm('现在配图？\n\n程序会画风频玫瑰图，从资料里截区域位置图和平面布置图，放进第2章，改之前先备份。\n\n第2.5节没有工艺流程图时，会调一次模型排框（排得不合格会再改一次），一共 1 美元（约 7 元）以内。已经有工艺流程图的不调模型，不花钱。')) return;
+    figBtn.disabled = true;
+    try { const j = await startJob('配图', {}, d['文件夹']); go('job/' + j['号']); }
+    catch (e) { if (!DEAD) toast(errText(e), true); }
+    finally { figBtn.disabled = false; }
+  });
+  const code = codeOf(d['项目']);
+  body.appendChild(el('div', { class: 'phead' },
+    el('div', { class: 'ttl' }, el('h2', { text: shortName(d['项目']) }),
+      el('div', { class: 'meta row note' }, code ? el('span', { text: '编号 ' + code }) : null, el('span', { text: d['方法'] }),
+        d['定稿'] ? pill('ok', '定稿') : null, d['PDF'] ? el('span', { text: '最新 PDF：' + fmtTime(d['PDF']['时间']) + (d['PDF']['页数'] ? '，' + d['PDF']['页数'] + ' 页' : '') }) : el('span', { text: '还没出过 PDF' }))),
+    el('div', { class: 'acts' },
+      el('button', { class: 'main', disabled: busy, onclick: () => go('revise/' + enc(d['文件夹'])) }, icon('edit'), '照意见修改'),
+      el('button', { disabled: busy, onclick: () => go('review/' + enc(d['文件夹'])) }, icon('search'), '全文审一遍'),
+      el('button', { disabled: busy, onclick: () => showSupplementForm(d) }, icon('plus'), '补充资料'),
+      pubBtn,
+      figBtn,
+      d['PDF'] ? el('button', { onclick: () => openPath(d['PDF']['路径']) }, icon('pdf'), '看 PDF') : null,
+      el('button', { onclick: () => openPath(d['文件夹']) }, icon('folder'), '打开文件夹'),
+      d['交稿说明'] ? el('button', { onclick: () => openPath(d['交稿说明']) }, icon('note'), '交稿说明') : null)));
+  if (busy) body.appendChild(el('p', { class: 'note', text: '程序正在做这份报告，做完以前不能再开始别的事。' }));
+  // 正在做 / 上次出错
+  const liveWrap = body.appendChild(el('div'));
+  const last = jobsHere[0];
+  const recent = last && last['结束'] && Date.now() / 1000 - last['结束'] < 3600;
+  const showJobLive = async () => {
+    const pick1 = job || (last && (canAgain(last) || recent) ? last : null);
+    if (!pick1) return;
+    let j = pick1;
+    try { j = await api('/api/jobs/' + enc(pick1['号'])); } catch (e) { /* 用列表里的简要记录 */ }
+    markLater(j, jobsHere);
+    if (stale(seq)) return;
+    const total = j['阶段'] === '写作' || j['阶段'] === '逐章审' ? d['章节'].length : 0;
+    clear(liveWrap).appendChild(liveBox(j, { total, actions: el('div', { class: 'acts' }, jobButtons(j),
+      el('button', { class: 'small', onclick: () => go('job/' + j['号']) }, '细节')), result: resultBox(j, true) }));
+    if (RUNNING.indexOf(j['状态']) >= 0) later(async () => {
+      if (stale(seq)) return;
+      let now; try { now = await api('/api/jobs/' + enc(j['号'])); } catch (e) { now = null; }
+      if (stale(seq)) return;
+      if (now && RUNNING.indexOf(now['状态']) < 0) route(); else showJobLive();
+    }, 4000);
+  };
+  showJobLive();
+  // 数字
+  const errN = d['错误'] || 0, hintN = d['提示'] || 0, todoN = d['待办'] || 0;
+  const written = d['章节'].filter((c) => c['写好']).length;
+  body.appendChild(el('div', { class: 'stats' },
+    el('div', { class: 'stat ' + (written === d['章节'].length ? 'ok' : 'warn') }, el('div', { class: 'n', text: written + ' / ' + d['章节'].length }), el('div', { class: 'l', text: '个文件写好了' })),
+    el('div', { class: 'stat ' + (errN ? 'bad' : 'ok') }, el('div', { class: 'n', text: errN }), el('div', { class: 'l', text: errN ? '处必须改（改完才能出 PDF）' : '处必须改，可以出 PDF' })),
+    el('div', { class: 'stat warn' }, el('div', { class: 'n', text: hintN }), el('div', { class: 'l', text: '处建议看看（人工确认）' })),
+    el('div', { class: 'stat' }, el('div', { class: 'n', text: todoN }), el('div', { class: 'l', text: '处待填的空（等资料）' }))));
+  // 左边目录、右边内容
+  const toc = el('div', { class: 'card toc' }, el('div', { class: 'h', text: '各章' }));
+  const pane = el('div', { class: 'card', style: 'min-width:0' });
+  body.appendChild(el('div', { class: 'layout' }, toc, pane));
+  if (!file || !d['章节'].some((c) => c['文件'] === file)) file = (d['章节'][0] || {})['文件'] || '';
+  for (const c of d['章节']) {
+    const e = (c['错误'] || []).length, h = (c['提示'] || []).length;
+    const sub = !c['写好'] ? '还没写' : [fmtNum(c['字数']) + ' 字', e ? '必须改 ' + e : '', h ? '看看 ' + h : '', c['审过'] ? '审过' : ''].filter(Boolean).join(' · ');
+    toc.appendChild(el('button', { class: tab === 'doc' && c['文件'] === file ? 'on' : '', onclick: () => go(projHash(d['文件夹'], 'doc', c['文件'])) },
+      el('span', { class: 'no ' + (e ? 'err' : c['写好'] ? 'done' : ''), text: chapNo(c['文件']) }),
+      el('span', { class: 'nm' }, chapName(c['文件'], c['标题']), el('span', { class: 'sub' + (e ? ' bad' : ''), text: sub }))));
+  }
+  const allIssues = d['章节'].concat(d['其他文件'] || []);
+  const tabs = [['doc', '正文', null], ['issues', '问题清单', errN || hintN ? (errN ? errN + ' 必改' : hintN) : 0, errN > 0],
+    ['gaps', '资料欠缺', d['资料欠缺'] ? (d['资料欠缺']['要补'] || []).length || null : null, (d['资料欠缺'] && (d['资料欠缺']['要补'] || []).length > 0)],
+    ['changes', '改过的地方', null], ['jobs', '做过的事', jobsHere.length || null]];
+  pane.appendChild(el('div', { class: 'tabs', role: 'tablist' }, tabs.map((t) => el('button', { role: 'tab', 'aria-selected': t[0] === tab ? 'true' : 'false', class: t[0] === tab ? 'on' : '',
+    onclick: () => go(projHash(d['文件夹'], t[0], t[0] === 'doc' ? file : '')) }, t[1], t[2] ? el('span', { class: 'cnt' + (t[3] ? ' bad' : ''), text: t[2] }) : null))));
+  const inner = pane.appendChild(el('div'));
+  if (tab === 'issues') return issuesTab(inner, d, allIssues);
+  if (tab === 'gaps') return gapsTab(inner, d);
+  if (tab === 'changes') return changesTab(inner, seq, d);
+  if (tab === 'jobs') return jobsTable(inner, jobsHere, '这份报告还没有用程序做过事。');
+  return docTab(inner, seq, d, file, line);
+}
+async function docTab(box, seq, d, file, line) {
+  const c = d['章节'].find((x) => x['文件'] === file);
+  if (!c) { box.appendChild(empty('这份报告还没有正文。')); return; }
+  const e = c['错误'] || [], h = c['提示'] || [];
+  box.appendChild(el('div', { class: 'row', style: 'margin-bottom:10px' },
+    el('b', { text: chapLabel(file) + ' ' + chapName(file, c['标题']) }),
+    e.length ? pill('bad', '必须改 ' + e.length + ' 处') : pill('ok', '没有必须改的'),
+    h.length ? pill('warn', '建议看看 ' + h.length + ' 处') : null,
+    el('span', { class: 'spacer' }),
+    el('span', { class: 'note', text: '改于 ' + fmtTime(c['修改']) }),
+    el('button', { class: 'small', onclick: () => openPath(joinPath(d['文件夹'], '正文', file)) }, '在电脑上打开')));
+  if (e.length || h.length) box.appendChild(el('p', { class: 'note', style: 'margin-top:0', text: '红底的行是必须改的，黄底的行建议看一眼。要改就点上面的“照意见修改”，把要怎么改写进去。' }));
+  const holder = box.appendChild(el('div', null, el('p', { class: 'muted', text: '正在读取正文…' })));
+  let t;
+  try { t = await api('/api/file' + q({ '路径': joinPath(d['文件夹'], '正文', file) })); }
+  catch (err) { if (!stale(seq)) clear(holder).appendChild(el('p', { class: 'bad', text: errText(err) })); return; }
+  if (stale(seq)) return;
+  clear(holder).appendChild(renderDoc(t['文字'] || '', flagsOf(c)));
+  if (line) {
+    const target = $('L' + line);
+    if (target) {
+      const ln = target.closest('.ln') || target;
+      ln.classList.add('hit');
+      setTimeout(() => ln.scrollIntoView({ block: 'center' }), 50);
+    }
+  }
+}
+function joinPath(dir, ...names) {
+  const sep = dir.indexOf('\\') >= 0 && dir.indexOf('/') < 0 ? '\\' : '/';
+  return dir.replace(/[\\\/]+$/, '') + sep + names.join(sep);
+}
+let issueKind = 'bad';
+function issuesTab(box, d, files) {
+  const kinds = [['bad', '必须改', '错误'], ['warn', '建议看看', '提示'], ['todo', '待填的空', '待办']];
+  const counts = kinds.map((k) => files.reduce((n, f) => n + (f[k[2]] || []).length, 0));
+  if (counts[0] === 0 && issueKind === 'bad') issueKind = counts[1] ? 'warn' : 'todo';
+  const bar = box.appendChild(el('div', { class: 'filter' }));
+  const list = box.appendChild(el('div'));
+  const draw = () => {
+    clear(bar);
+    kinds.forEach((k, i) => bar.appendChild(el('button', { class: 'small' + (issueKind === k[0] ? ' on' : ''), onclick: () => { issueKind = k[0]; draw(); } }, k[1] + ' ' + counts[i])));
+    clear(list);
+    const k = kinds.find((x) => x[0] === issueKind);
+    if (issueKind === 'bad') list.appendChild(el('p', { class: 'note', style: 'margin-top:0', text: '机器检查查出来的，出 PDF 前要全部改掉。点一条跳到正文那一行。' }));
+    if (issueKind === 'warn') list.appendChild(el('p', { class: 'note', style: 'margin-top:0', text: '机器拿不准的，请人看一眼：多数是正常写法，不用改。' }));
+    if (issueKind === 'todo') list.appendChild(el('p', { class: 'note', style: 'margin-top:0', text: '正文里还留着的空格，一般要等建设单位给资料再填。' }));
+    let any = false;
+    for (const f of files) {
+      const arr = f[k[2]] || [];
+      if (!arr.length) continue;
+      any = true;
+      const isBody = /\.md$/.test(f['文件']) && d['章节'].some((c) => c['文件'] === f['文件']);
+      const g = list.appendChild(el('div', { class: 'group' }, el('div', { class: 'gh' },
+        isBody ? chapLabel(f['文件']) + ' ' + chapName(f['文件'], f['标题']) : ({ '正文': '全文', '检查规则.md': '这份报告自己的检查规则', '项目信息.md': '项目信息（编号、名称、日期等）' }[f['文件']] || f['文件']), pill(k[0] === 'todo' ? '' : k[0], arr.length + ' 处'))));
+      const shown = arr.slice(0, 80);
+      for (const s of shown) {
+        const x = splitLine(s);
+        const jump = isBody && x.line ? () => go(projHash(d['文件夹'], 'doc', f['文件'], x.line)) : null;
+        const fix = issueKind !== 'todo' && isBody ? el('button', { class: 'small', onclick: (ev) => {
+          ev.stopPropagation();
+          PREFILL = chapLabel(f['文件']) + (x.line ? '第' + x.line + '行' : '') + '：' + x.text + '\n（请改掉这一处）';
+          go('revise/' + enc(d['文件夹']));
+        } }, '交给程序改') : null;
+        g.appendChild(el('div', { class: 'issue ' + k[0], role: jump ? 'link' : null, tabindex: jump ? '0' : null, style: jump ? 'cursor:pointer' : '',
+          onclick: jump, onkeydown: jump ? (ev) => { if (ev.key === 'Enter') jump(); } : null },
+          el('span', { class: 'where', text: x.line ? '第 ' + x.line + ' 行' : '' }), el('span', { class: 'what', text: x.text }), fix));
+      }
+      if (arr.length > shown.length) g.appendChild(el('p', { class: 'note', text: '……还有 ' + (arr.length - shown.length) + ' 处没列出' }));
+    }
+    if (!any) list.appendChild(empty(issueKind === 'bad' ? '没有必须改的问题，可以出 PDF。' : '没有。'));
+  };
+  draw();
+}
+function diffNode(seg, oldText, newText) {
+  if (Array.isArray(seg)) return el('div', { class: 'diff' }, seg.map((s) => s[0] === '-' ? el('del', { text: s[1] }) : s[0] === '+' ? el('ins', { text: s[1] }) : document.createTextNode(s[1])));
+  if (!oldText) return el('div', { class: 'diff' }, el('ins', { text: newText || '' }));
+  if (!newText) return el('div', { class: 'diff' }, el('del', { text: oldText }));
+  return el('div', { class: 'two' }, el('div', { class: 'o' }, el('span', { class: 'lab', text: '原来' }), oldText), el('div', { class: 'n' }, el('span', { class: 'lab', text: '现在' }), newText));
+}
+// ---------- 资料欠缺清单（不进报告，转给建设单位要资料用） ----------
+function gapsTab(box, d) {
+  const g = d['资料欠缺'];
+  if (!g) { box.appendChild(empty('资料欠缺清单读不出来。')); return; }
+  const need = g['要补'] || [], better = g['补了更准'] || [], skip = g['可以不补'] || [];
+  box.appendChild(el('div', { class: 'row', style: 'margin-bottom:8px' },
+    el('span', { class: 'note', text: '这份清单不进报告，是转给建设单位要资料用的。' + (g['时间'] ? '整理于 ' + g['时间'] + '。' : '') }),
+    el('span', { class: 'spacer' }),
+    d['资料欠缺文件'] ? el('button', { class: 'small', onclick: () => openPath(d['资料欠缺文件']) }, icon('note'), '打开清单文件（转给建设单位）')
+      : el('span', { class: 'note', text: '出 PDF 时会写一份清单文件放进“输出”文件夹' })));
+  const table = (rows, cols) => el('div', { class: 'tablewrap' }, el('table', { class: 'list' },
+    el('thead', null, el('tr', null, cols.map((c) => el('th', { text: c[1] })))),
+    el('tbody', null, rows.map((r) => el('tr', null, cols.map((c, i) => el('td', { style: i === 0 ? 'font-weight:600' : '', text: r[c[0]] || '' })))))));
+  const g1 = box.appendChild(el('div', { class: 'group' }, el('div', { class: 'gh' }, '要补', pill(need.length ? 'bad' : 'ok', need.length + ' 项'))));
+  g1.appendChild(need.length ? table(need, [['缺什么', '缺什么'], ['用在', '用在哪'], ['找谁', '找谁要'], ['现在', '现在报告里怎么写的']]) : empty('没有非补不可的资料。'));
+  const fold = (title, rows, cols, sub) => {
+    if (!rows.length) return;
+    box.appendChild(el('details', { class: 'more group' }, el('summary', { text: title + '（' + rows.length + ' 项）' + (sub ? '：' + sub : '') }),
+      el('div', { style: 'margin-top:8px' }, table(rows, cols))));
+  };
+  fold('补了更准', better, [['缺什么', '缺什么'], ['现在', '现在报告里怎么写的']], '没有也能出报告，补来写得更具体');
+  fold('可以不补', skip, [['缺什么', '缺什么'], ['用在', '用在哪']], '有了更好，没有不影响结论');
+}
+let changeView = 'diff', reviewOnly = '全部';
+async function changesTab(box, seq, d, backup) {
+  const head = box.appendChild(el('div', { class: 'filter' }));
+  const out = box.appendChild(el('div', null, el('p', { class: 'muted', text: '正在比对…' })));
+  let c;
+  try { c = await api('/api/project/changes' + q(backup ? { '路径': d['文件夹'], '备份': backup } : { '路径': d['文件夹'] })); }
+  catch (e) { if (!stale(seq)) clear(out).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+  if (stale(seq)) return;
+  const opsN = (c['审稿'] || []).reduce((n, r) => n + r['意见'].length, 0);
+  const spotsN = (c['改动'] || []).reduce((n, f) => n + f['共'], 0);
+  const draw = () => {
+    clear(head).append(
+      el('button', { class: 'small' + (changeView === 'diff' ? ' on' : ''), onclick: () => { changeView = 'diff'; draw(); } }, '和改之前比 ' + spotsN + ' 处'),
+      el('button', { class: 'small' + (changeView === 'review' ? ' on' : ''), onclick: () => { changeView = 'review'; draw(); } }, '审稿意见 ' + opsN + ' 条'));
+    clear(out);
+    if (changeView === 'review') return drawReviews(out, d, c);
+    const backs = c['备份'] || [];
+    if (!backs.length) { out.appendChild(empty('还没有改稿或审稿前的备份，没有可比的。程序每次改正文以前都会先存一份，以后就能在这里看到改了哪几句。')); return; }
+    const sel = el('select', { style: 'width:auto;max-width:100%', 'aria-label': '和哪一次改之前比' },
+      backs.map((b) => el('option', { value: b['名'], selected: b['名'] === c['对比'], text: fmtTime(b['时间']) + ' ' + (b['说明'] || '') })));
+    sel.addEventListener('change', () => { clear(box); changesTab(box, seq, d, sel.value); });
+    out.appendChild(el('div', { class: 'row', style: 'margin-bottom:12px' }, el('span', { text: '和这一次改之前的正文比：' }), sel));
+    out.appendChild(el('p', { class: 'note', style: 'margin-top:0' }, '红色划掉的是删了的字，绿色的是加上的字。', el('del', { style: 'background:var(--del);color:var(--del-text)', text: '删掉' }), ' ', el('ins', { style: 'background:var(--ins);color:var(--ins-text);text-decoration:none', text: '加上' })));
+    if (!c['改动'].length) { out.appendChild(empty('从那次以后正文没有变过。')); return; }
+    for (const f of c['改动']) {
+      const g = out.appendChild(el('div', { class: 'group' }, el('div', { class: 'gh' }, chapLabel(f['文件']) + ' ' + chapName(f['文件'], f['标题']), pill('run', f['共'] + ' 处'))));
+      for (const s of f['处']) {
+        g.appendChild(el('div', { class: 'change' },
+          el('div', { class: 'ch' }, el('span', { text: '现在第 ' + s['行'] + ' 行' }), el('span', { class: 'spacer' }),
+            el('button', { class: 'small', onclick: () => go(projHash(d['文件夹'], 'doc', f['文件'], s['行'])) }, '在正文里看')),
+          el('div', { class: 'cb' }, diffNode(s['逐字'], s['原文'], s['改成']))));
+      }
+      if (f['共'] > f['处'].length) g.appendChild(el('p', { class: 'note', text: '……还有 ' + (f['共'] - f['处'].length) + ' 处没列出' }));
+    }
+  };
+  draw();
+}
+function drawReviews(out, d, c) {
+  const all = c['审稿'] || [];
+  if (!all.length) { out.appendChild(empty('这份报告还没用程序审过。点上面的“全文审一遍”。')); return; }
+  const state = (o) => o['结果'] === '已改' ? '已改' : (!o['结果'] || o['结果'] === '没改') ? '只提意见' : '没改';
+  const bar = out.appendChild(el('div', { class: 'filter' }));
+  ['全部', '已改', '没改', '只提意见'].forEach((k) => bar.appendChild(el('button', { class: 'small' + (reviewOnly === k ? ' on' : ''),
+    onclick: () => { reviewOnly = k; clear(out); drawReviews(out, d, c); } }, k + ' ' + all.reduce((n, r) => n + r['意见'].filter((o) => k === '全部' || state(o) === k).length, 0))));
+  out.appendChild(el('p', { class: 'note', style: 'margin-top:0', text: '审稿程序每条意见都写了依据。“没改”的是程序拿不准、留给人定的（比如说资料里查不到，可原文里其实有）。' }));
+  for (const r of all) {
+    const ops = r['意见'].filter((o) => reviewOnly === '全部' || state(o) === reviewOnly);
+    if (!ops.length) continue;
+    const g = out.appendChild(el('div', { class: 'group' }, el('div', { class: 'gh' }, chapLabel(r['文件']) + ' ' + chapName(r['文件']), el('span', { class: 'note', style: 'font-weight:400', text: '审于 ' + fmtTime(r['时间']) }))));
+    for (const o of ops) {
+      const st = state(o);
+      g.appendChild(el('div', { class: 'change' },
+        el('div', { class: 'ch' }, pill(o['级别'] === '必改' ? 'bad' : 'warn', o['级别'] || '意见'), pill(st === '已改' ? 'ok' : st === '没改' ? 'warn' : '', st),
+          el('span', { text: o['行'] ? '第 ' + o['行'] + ' 行' : '' }), el('span', { class: 'spacer' }),
+          /^\d+$/.test(o['行'] || '') ? el('button', { class: 'small', onclick: () => go(projHash(d['文件夹'], 'doc', r['文件'], o['行'])) }, '在正文里看') : null),
+        el('div', { class: 'cb' }, el('div', { style: 'font-weight:600;margin-bottom:6px', text: o['问题'] }),
+          (o['原文'] || o['改成']) ? diffNode(o['逐字'], o['原文'], o['改成']) : null,
+          el('div', { class: 'why' }, o['依据'] ? [el('b', { text: '依据：' }), o['依据']] : null,
+            st === '没改' && o['结果'] ? el('div', null, el('b', { text: '为什么没改：' }), o['结果']) : null))));
+    }
+  }
+  if (c['跨章']) out.appendChild(el('details', { class: 'more' }, el('summary', { text: '前后各章对一遍的记录' }), el('pre', { class: 'text', text: c['跨章'] })));
+}
+// ---------- 做过的事 ----------
+function jobProject(j) { return shortName(j['项目名']) || baseName(j['项目']) || (j['类别'] === '改稿' ? '（几份报告一起改）' : ''); }
+function jobsTable(box, arr, emptyText, withProject) {
+  if (!arr.length) { box.appendChild(empty(emptyText)); return; }
+  const tb = el('tbody');
+  for (const j of arr) {
+    const u = j['用量'] || {};
+    const end = j['结束'] || (RUNNING.indexOf(j['状态']) >= 0 ? Date.now() / 1000 : null);
+    const doing = RUNNING.indexOf(j['状态']) >= 0 && (j['进行中'] || []).length ? '正在：' + j['进行中'].map(stepName).slice(0, 3).join('、') : '';
+    const title = j['类别'] === '改稿' ? '意见：' + String(j['标题'] || '').replace(/^改稿：/, '') : j['类别'] === '审稿' && /第/.test(j['标题'] || '') ? String(j['标题']).replace('审稿', '只审') : '';
+    tb.appendChild(el('tr', { class: 'click', tabindex: '0', onclick: () => go('job/' + j['号']), onkeydown: (e) => { if (e.key === 'Enter') go('job/' + j['号']); } },
+      el('td', { text: fmtTime(j['建立']) }),
+      el('td', null, el('div', { text: kindName(j['类别']) + (/接着做/.test(j['标题'] || '') ? '（接着做）' : '') }), title ? el('div', { class: 'note', text: title }) : null, doing ? el('div', { class: 'note', text: doing }) : null),
+      withProject ? el('td', { text: jobProject(j) }) : null,
+      el('td', null, statePill(j['状态'])),
+      el('td', { text: j['开始'] && end ? fmtDur(end - j['开始']) : '' }),
+      el('td', { class: 'num', text: fmtYuan(u['美元']) || '—' })));
+  }
+  box.appendChild(el('div', { class: 'tablewrap' }, el('table', { class: 'list' },
+    el('thead', null, el('tr', null, el('th', { text: '时间' }), el('th', { text: '做了什么' }), withProject ? el('th', { text: '报告' }) : null,
+      el('th', { text: '结果' }), el('th', { text: '用时' }), el('th', { class: 'num', text: '花费（估算）' }))), tb)));
+}
+async function showHistory(box, seq) {
+  box.append(el('h2', { text: '做过的事' }), el('p', { class: 'lead', text: '程序写稿、审稿、改稿、出 PDF 的每一次记录。点一行看细节。花费按官方价估算，实际以中转账单为准。' }));
+  const list = box.appendChild(el('div', { class: 'card' }, el('p', { class: 'muted', text: '正在读取…' })));
+  const tick = async () => {
+    let arr;
+    try { arr = await api('/api/jobs'); }
+    catch (e) { if (!stale(seq)) clear(list).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+    if (stale(seq)) return;
+    arr = Array.isArray(arr) ? arr.slice() : [];
+    arr.sort((a, b) => (RUNNING.indexOf(b['状态']) >= 0) - (RUNNING.indexOf(a['状态']) >= 0) || (b['建立'] || 0) - (a['建立'] || 0));
+    clear(list);
+    jobsTable(list, arr, '还没有做过事。回到“报告”页开始。', true);
+    if (arr.some((j) => RUNNING.indexOf(j['状态']) >= 0)) later(tick, 3000);
+  };
+  tick();
+}
+function showJob(box, seq, jid) {
+  box.appendChild(el('div', { class: 'crumb' }, el('button', { class: 'ghost', onclick: () => history.length > 1 ? history.back() : go('history') }, icon('back'), '返回')));
+  const top = box.appendChild(el('div'));
+  const detail = box.appendChild(el('details', { class: 'more card', style: 'margin-top:4px' }, el('summary', { text: '细节：每一步和原始记录（给懂行的人看）' })));
+  const stepsBox = detail.appendChild(el('div', { style: 'margin-top:10px' }));
+  const logBox = detail.appendChild(el('pre', { class: 'text', tabindex: '0', 'aria-label': '原始记录' }));
+  let logKey = '', failures = 0, head = '';
+  const render = (j) => {
+    const total = j['阶段'] === '写作' || j['阶段'] === '逐章审' ? (j['步骤'] || []).filter((s) => /^(写|审) \S+\.md/.test(s['名称'] || '')).length || 0 : 0;
+    const proj = j['项目'] ? el('div', { class: 'row', style: 'margin-bottom:10px' }, el('h2', { style: 'margin:0', text: jobProject(j) }),
+      el('button', { class: 'small', onclick: () => go(projHash(j['项目'])) }, '去这份报告')) : el('h2', { text: kindName(j['类别']) });
+    const p = j['参数'] || {};
+    const said = j['类别'] === '改稿' && p['意见'] ? el('div', { class: 'card', style: 'margin-bottom:14px' }, el('div', { class: 'note', text: '修改意见（原话）' }), el('div', { style: 'white-space:pre-wrap', text: p['意见'] })) : null;
+    clear(top).append(proj, liveBox(j, { total, actions: jobButtons(j), result: resultBox(j) }), said || '');
+    const ss = Array.isArray(j['步骤']) ? j['步骤'] : [];
+    clear(stepsBox).appendChild(ss.length ? el('div', { class: 'tablewrap' }, el('table', { class: 'list' },
+      el('thead', null, el('tr', null, ['', '这一步', '结果', '用时', '说明'].map((t) => el('th', { text: t })), el('th', { class: 'num', text: '花费（估算）' }))),
+      el('tbody', null, ss.map((s) => {
+        const sec = typeof s['秒'] === 'number' ? s['秒'] : s['开始'] ? ((s['结束'] || Date.now() / 1000) - s['开始']) : null;
+        const usd = ((s['输入'] || 0) * 4 + (s['输出'] || 0) * 20) / 1e6;
+        return el('tr', null, el('td', { class: 'faint', text: s['号'] }), el('td', { text: stepName(s['名称']) }), el('td', null, statePill(s['状态'])),
+          el('td', { text: sec === null ? '' : fmtDur(sec) }), el('td', { class: 'note', text: s['说明'] || '' }), el('td', { class: 'num', text: fmtYuan(usd) }));
+      }))))
+      : el('p', { class: 'muted', text: '还没有步骤。' }));
+    const logs = Array.isArray(j['日志']) ? j['日志'] : [];
+    const key = logs.length + '|' + JSON.stringify(logs[logs.length - 1] || '');
+    if (key !== logKey) {
+      logBox.textContent = logs.length ? logs.map((x) => { const t = new Date(Number(x[0]) * 1000); return (isNaN(t.getTime()) ? '' : pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds()) + '  ') + String(x[1]); }).join('\n') : '（还没有记录）';
+      logBox.scrollTop = logBox.scrollHeight;
+      logKey = key;
+    }
+    if (j['错误']) { if (head !== j['错误']) { head = j['错误']; detail.appendChild(el('p', { class: 'note', text: '原话：' + j['错误'] })); } }
+    return RUNNING.indexOf(j['状态']) >= 0;
+  };
+  let listed = null;
+  const tick = async () => {
+    let j;
+    try {
+      j = await api('/api/jobs/' + enc(jid)); failures = 0;
+      if (listed === null && AGAIN_KINDS.indexOf(j['类别']) >= 0) { try { listed = await api('/api/jobs'); } catch (e) { listed = []; } }
+      markLater(j, listed);
+    }
+    catch (e) {
+      if (stale(seq)) return;
+      if (e.code === 404 || e.code === 400) { clear(top).appendChild(empty('没有这条记录。')); return; }
+      if (++failures >= 2) clear(top).appendChild(el('p', { class: 'bad', text: errText(e) }));
+      later(tick, 4000); return;
+    }
+    if (stale(seq)) return;
+    if (render(j)) later(tick, 2000);   // 结束了就不再刷新
+  };
+  tick();
+}
+// ---------- 表单公用 ----------
+let fieldSeq = 0;
+function field(label, input, note) {
+  const target = input.matches('input,select,textarea') ? input : (input.querySelector('input,select,textarea') || input);
+  target.id = target.id || 'f' + (++fieldSeq);
+  return el('div', null, el('label', { class: 'f', for: target.id, text: label }), input, note ? el('div', { class: 'note', text: note }) : null);
+}
+function textInput(value, placeholder) { const i = el('input', { type: 'text', placeholder: placeholder || '' }); i.value = value || ''; return i; }
+function check(label, on) {
+  const c = el('input', { type: 'checkbox' }); c.checked = !!on;
+  return { box: c, label: el('label', null, c, label) };
+}
+function radio(name, value, title, sub, on) {
+  const r = el('input', { type: 'radio', name, value }); r.checked = !!on;
+  return el('label', null, r, el('span', null, el('b', { text: title }), sub ? el('small', { text: sub }) : null));
+}
+function lines(text) { return text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean); }
+function wsteps(names, at) { return el('div', { class: 'wsteps' }, names.map((n, i) => el('span', { class: i === at ? 'on' : i < at ? 'done' : '', text: (i + 1) + ' ' + n }))); }
+async function findProject(path) {
+  try { return await api('/api/project' + q({ '路径': path })); } catch (e) { if (!DEAD) toast(errText(e), true); return null; }
+}
+
+// ---------- 写新报告（三步） ----------
+async function formNew(box, seq) {
+  if (!SETTINGS) await loadSettings();
+  if (stale(seq)) return;
+  const S = { files: [], where: SETTINGS ? SETTINGS['项目位置'] || '' : '', name: '', method: '', title: '', short: '', code: '', date: '', rv: true, pub: true };
+  let at = 0;
+  box.appendChild(el('div', { class: 'crumb' }, el('button', { class: 'ghost', onclick: () => go('home') }, icon('back'), '全部报告')));
+  box.append(el('h2', { text: '写一份新报告' }), el('p', { class: 'lead', text: '把资料交给程序，它会读资料、整理项目情况、一章一章写，写完自己审一遍、出 PDF。做的时候随时能看到写到哪、花了多少。' }));
+  const wrap = box.appendChild(el('div', { class: 'card wizard' }));
+  const draw = () => {
+    clear(wrap).appendChild(wsteps(['选资料', '填报告信息', '确认开始'], at));
+    const msg = el('div', { class: 'msg', role: 'alert' });
+    if (at === 0) {
+      const list = el('ul', { class: 'files' });
+      const paste = el('textarea', { placeholder: '也可以把文件路径粘贴在这里，一行一个', style: 'min-height:70px' });
+      const redraw = () => {
+        clear(list);
+        S.files.forEach((f, i) => list.appendChild(el('li', null, icon('file'), el('span', { text: baseName(f) }), el('span', { class: 'note', text: f }), el('span', { class: 'spacer' }),
+          el('button', { class: 'small', onclick: () => { S.files.splice(i, 1); redraw(); } }, '去掉'))));
+        if (!S.files.length) list.appendChild(el('li', { class: 'muted', text: '还没有选资料' }));
+      };
+      const add = (arr) => { arr.forEach((x) => { if (S.files.indexOf(x) < 0) S.files.push(x); }); redraw(); };
+      redraw();
+      wrap.append(el('div', { class: 'drop' }, el('div', { style: 'margin-bottom:10px', text: '可研报告、初步设计、委托书、合同、平面布置图……有几份选几份' }),
+        el('div', { class: 'acts', style: 'justify-content:center' },
+          el('button', { class: 'main', onclick: async () => add(await pick('文件', true, '选择资料文件（可以多选）')) }, icon('plus'), '添加文件'),
+          el('button', { onclick: async () => add(await pick('文件夹', false, '选择资料文件夹')) }, icon('folder'), '添加整个文件夹'))),
+        list, el('details', { class: 'more' }, el('summary', { text: '粘贴路径' }), paste, el('button', { class: 'small', style: 'margin-top:6px', onclick: () => { add(lines(paste.value).map((x) => x.replace(/^["'“”]+|["'“”]+$/g, ''))); paste.value = ''; } }, '加进去')),
+        el('div', { class: 'formbtns' }, el('button', { class: 'main big', onclick: () => {
+          if (lines(paste.value).length) add(lines(paste.value).map((x) => x.replace(/^["'“”]+|["'“”]+$/g, '')));
+          if (!S.files.length) return showMsg(msg, '请至少添加一份资料（可研报告等）', true);
+          at = 1; draw();
+        } }, '下一步')), msg);
+    } else if (at === 1) {
+      const where = textInput(S.where, '例如 /Users/名字/Desktop/评价报告项目');
+      const name = textInput(S.name, '例如 某某公司某某项目预评价');
+      const whereRow = el('div', { class: 'row' }, where, el('button', { onclick: async () => { const r = await pick('文件夹', false, '选择新报告放在哪个文件夹里'); if (r.length) where.value = r[0]; } }, '选择…'));
+      const methods = el('div', { class: 'choice', role: 'radiogroup' },
+        radio('method', '类比法', '类比法', '找一个同类已投产的项目做对照', S.method === '类比法'),
+        radio('method', '风险评估法', '风险评估法', '按危害程度、接触水平打分评风险', S.method === '风险评估法'));
+      const title = textInput(S.title, '空着＝程序从资料里读'), short = textInput(S.short, '空着＝程序自己起'), code = textInput(S.code, '例如 AT-2026-Y019'), date = textInput(S.date, '例如 2026年11月');
+      const save = () => { Object.assign(S, { where: where.value.trim().replace(/^["'“”]+|["'“”]+$/g, ''), name: name.value.trim(), title: title.value.trim(), short: short.value.trim(), code: code.value.trim(), date: date.value.trim() }); const m = methods.querySelector('input:checked'); S.method = m ? m.value : ''; };
+      wrap.append(
+        el('div', { class: 'grid2' }, field('放在哪', whereRow), field('新文件夹叫什么（必填）', name, '程序会在“放在哪”里建这个文件夹，报告的一切都放在里面')),
+        field('评价方法（必选）', methods, '委托书、合同或可研里一般写了用哪种；拿不准就问一下负责人'),
+        el('div', { class: 'grid2' }, field('项目名称', title), field('简称（显示在列表里）', short), field('报告编号', code), field('报告日期', date)),
+        el('div', { class: 'formbtns' }, el('button', { onclick: () => { save(); at = 0; draw(); } }, '上一步'), el('button', { class: 'main big', onclick: () => {
+          save();
+          if (!S.where) return showMsg(msg, '请填“放在哪”', true);
+          if (!S.name) return showMsg(msg, '请填“新文件夹叫什么”', true);
+          if (/[\\\/:*?"<>|]/.test(S.name)) return showMsg(msg, '文件夹名里不能有 \\ / : * ? " < > | 这些符号', true);
+          if (/^\.+$/.test(S.name) || /[. ]$/.test(S.name)) return showMsg(msg, '文件夹名不能只有点，也不能以点或空格结尾', true);
+          if (!S.method) return showMsg(msg, '请选择评价方法：类比法或风险评估法', true);
+          at = 2; draw();
+        } }, '下一步')), msg);
+      name.focus();
+    } else {
+      const rv = check('写完自己审一遍（推荐，多花一些）', S.rv), pub = check('审完出 PDF', S.pub);
+      rv.box.addEventListener('change', () => { S.rv = rv.box.checked; }); pub.box.addEventListener('change', () => { S.pub = pub.box.checked; });
+      const go1 = el('button', { class: 'main big' }, icon('play'), '开始写');
+      go1.addEventListener('click', async () => {
+        go1.disabled = true; showMsg(msg, '正在提交…', false);
+        try {
+          const d = await startJob('新报告', { '文件夹': joinPath(S.where, S.name), '方法': S.method, '资料': S.files, '名称': S.title, '简称': S.short, '编号': S.code, '日期': S.date, '审稿': S.rv, '出稿': S.pub });
+          go('job/' + d['号']);
+        } catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+        finally { go1.disabled = false; }
+      });
+      wrap.append(el('div', { class: 'kv' },
+        el('div', { class: 'k', text: '资料' }), el('div', { class: 'v', text: S.files.length + ' 份：' + S.files.map(baseName).join('、') }),
+        el('div', { class: 'k', text: '放在' }), el('div', { class: 'v', text: joinPath(S.where, S.name) }),
+        el('div', { class: 'k', text: '方法' }), el('div', { text: S.method }),
+        el('div', { class: 'k', text: '名称' }), el('div', { text: S.title || '（从资料里读）' }),
+        el('div', { class: 'k', text: '编号、日期' }), el('div', { text: [S.code, S.date].filter(Boolean).join('，') || '（没填）' })),
+        el('div', { class: 'checks', style: 'margin-top:16px' }, rv.label, pub.label),
+        el('div', { class: 'callout', text: '开始以后会调用模型、要花钱。中途断了不要紧：做完的部分会留着，点“接着做”从断的地方继续。' }),
+        el('div', { class: 'formbtns' }, el('button', { onclick: () => { at = 1; draw(); } }, '上一步'), go1), msg);
+    }
+  };
+  draw();
+}
+// ---------- 照意见修改 ----------
+async function formRevise(box, seq, path) {
+  const d = path ? await findProject(path) : null;
+  if (stale(seq)) return;
+  const prefill = PREFILL; PREFILL = '';
+  box.appendChild(el('div', { class: 'crumb' }, el('button', { class: 'ghost', onclick: () => go(d ? projHash(d['文件夹']) : 'home') }, icon('back'), d ? '回到这份报告' : '全部报告')));
+  box.append(el('h2', { text: '照意见修改' }), el('p', { class: 'lead', text: '把专家意见、领导意见照原话贴进来，不用整理。程序会找出该改的地方改好，改之前先备份，改完能在“改过的地方”逐句看。' }));
+  const wrap = box.appendChild(el('div', { class: 'card wizard' }));
+  const words = el('textarea', { placeholder: '例如：第7章缺氧作业只写正压式空气呼吸器，不要写长管呼吸器', style: 'min-height:200px' });
+  words.value = prefill;
+  if (!PROJECTS.length) { try { await loadProjects(); } catch (e) { /* 下面会说没有项目 */ } }
+  if (stale(seq)) return;
+  const all = PROJECTS.filter((p) => p['存在'] !== false && p['文件夹']);
+  const scope = el('div', { class: 'choice', role: 'radiogroup' },
+    d ? radio('scope', 'one', '只改这一份', shortName(d['项目']), true) : null,
+    radio('scope', 'all', '所有报告都改', '共 ' + all.length + ' 份：' + all.map((p) => shortName(p['项目'])).join('、'), !d),
+    radio('scope', 'some', '自己挑几份', '', false));
+  const somebox = el('div', { class: 'chgrid', style: 'display:none;margin-top:10px' });
+  const picks = all.map((p) => { const c = check(shortName(p['项目']), d && p['文件夹'] === d['文件夹']); somebox.appendChild(c.label); return { p, c }; });
+  scope.addEventListener('change', () => { somebox.style.display = scope.querySelector('input:checked').value === 'some' ? '' : 'none'; });
+  const pub = check('改完出 PDF', true);
+  const msg = el('div', { class: 'msg', role: 'alert' });
+  const btn = el('button', { class: 'main big' }, icon('play'), '开始修改');
+  btn.addEventListener('click', async () => {
+    const w = words.value.trim();
+    if (!w) return showMsg(msg, '请把修改意见贴进来', true);
+    const s = scope.querySelector('input:checked').value;
+    let which = '全部';
+    if (s === 'one') which = [d['文件夹']];
+    if (s === 'some') { which = picks.filter((x) => x.c.box.checked).map((x) => x.p['文件夹']); if (!which.length) return showMsg(msg, '请至少勾一份报告', true); }
+    btn.disabled = true; showMsg(msg, '正在提交…', false);
+    try { const j = await startJob('改稿', { '意见': w, '项目': which, '出稿': pub.box.checked }); go('job/' + j['号']); }
+    catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+    finally { btn.disabled = false; }
+  });
+  wrap.append(field('修改意见（照原话）', words),
+    el('label', { class: 'f', text: '改哪几份' }), scope, somebox,
+    el('div', { class: 'checks', style: 'margin-top:14px' }, pub.label),
+    el('div', { class: 'callout', text: '程序会判断这条意见是不是以后都要照办的写法。是的话记进“写作规矩”，以后新写的报告也照这样写，同一条意见不用说第二遍。' }),
+    el('div', { class: 'formbtns' }, btn), msg);
+  words.focus();
+}
+// ---------- 全文审一遍 ----------
+async function formReview(box, seq, path) {
+  const d = path ? await findProject(path) : null;
+  if (stale(seq)) return;
+  if (!d) { go('home'); return; }
+  box.appendChild(el('div', { class: 'crumb' }, el('button', { class: 'ghost', onclick: () => go(projHash(d['文件夹'])) }, icon('back'), '回到这份报告')));
+  box.append(el('h2', { text: '审一遍：' + shortName(d['项目']) }), el('p', { class: 'lead', text: '程序按审稿清单、各章要点和写作规矩逐章审，每条意见都写依据。可以只审几章。' }));
+  const wrap = box.appendChild(el('div', { class: 'card wizard' }));
+  const groups = byChapter(d['章节']);
+  const allBox = check('全部章节', true);
+  const chs = groups.map((g) => ({ k: g.k, c: check(chapLabel(g.k) + ' ' + chapName(g.files[0]['文件'], g.files.length > 1 ? '' : g.files[0]['标题']), true) }));
+  allBox.box.addEventListener('change', () => chs.forEach((x) => { x.c.box.checked = allBox.box.checked; }));
+  chs.forEach((x) => x.c.box.addEventListener('change', () => { allBox.box.checked = chs.every((y) => y.c.box.checked); }));
+  const focus = textInput('', '例如：重点看第7章防护用品；空着＝全面看');
+  const mode = el('div', { class: 'choice', role: 'radiogroup' },
+    radio('mode', 'fix', '审出来就改', '改之前自动备份；拿不准的不改，留给你定', true),
+    radio('mode', 'look', '只列问题，先别动正文', '看完意见再决定改不改', false));
+  const pub = check('审完出 PDF', false);
+  mode.addEventListener('change', () => { const look = mode.querySelector('input:checked').value === 'look'; pub.box.disabled = look; if (look) pub.box.checked = false; });
+  const msg = el('div', { class: 'msg', role: 'alert' });
+  const btn = el('button', { class: 'main big' }, icon('play'), '开始审');
+  btn.addEventListener('click', async () => {
+    const chosen = chs.filter((x) => x.c.box.checked).map((x) => x.k);
+    if (!chosen.length) return showMsg(msg, '请至少勾一章', true);
+    const look = mode.querySelector('input:checked').value === 'look';
+    btn.disabled = true; showMsg(msg, '正在提交…', false);
+    try {
+      const j = await startJob('审稿', { '章': allBox.box.checked ? '' : chosen.join(','), '重点': focus.value.trim(), '只看': look, '出稿': pub.box.checked }, d['文件夹']);
+      go('job/' + j['号']);
+    } catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+    finally { btn.disabled = false; }
+  });
+  wrap.append(el('label', { class: 'f', text: '审哪几章' }), el('div', { class: 'checks' }, allBox.label), el('div', { class: 'chgrid' }, chs.map((x) => x.c.label)),
+    field('这次特别看什么', focus), el('label', { class: 'f', text: '审出问题以后' }), mode,
+    el('div', { class: 'checks', style: 'margin-top:14px' }, pub.label),
+    el('div', { class: 'formbtns' }, btn), msg);
+}
+// ---------- 设置：连接、花费、写作规矩 ----------
+let usageDays = 7;
+async function showSettings(box, seq) {
+  box.append(el('h2', { text: '设置' }), el('p', { class: 'lead', text: '一般不用动。新同事第一次用，在“连接模型”里填上中转地址和密钥就行。' }));
+  const s = await loadSettings();
+  if (stale(seq)) return;
+  if (!s) { box.appendChild(el('p', { class: 'bad', text: '设置读不出来，请刷新页面再试' })); return; }
+  const url = textInput(s['地址'] || '', '空着＝用本机 Claude Code 里的地址');
+  const key = el('input', { type: 'password', autocomplete: 'new-password', placeholder: s['有密钥'] ? '已经有密钥了；空着＝不改' : '粘贴中转给的密钥' });
+  const model = textInput(s['模型'] || '', '例如 claude-opus-5-5');
+  const conc = el('input', { type: 'number', min: '1', max: '8', step: '1' }); conc.value = String(s['并发'] || 4);
+  const proxy = check('走这台电脑的系统代理（代理软件）', s['走系统代理']);
+  const think = check('模型思考时照常发回摘要', s['思考摘要'] !== false);
+  const place = textInput(s['项目位置'] || '', '新报告默认放在这里');
+  const placeRow = el('div', { class: 'row' }, place, el('button', { onclick: async () => { const r = await pick('文件夹', false, '选择新报告默认放在哪个文件夹'); if (r.length) place.value = r[0]; } }, '选择…'));
+  const src = el('div', { class: 'kv' });
+  const showSrc = (x) => clear(src).append(
+    el('div', { class: 'k', text: '密钥' }), el('div', { class: x['有密钥'] ? 'ok' : 'bad', text: x['有密钥'] ? '有（来自' + (x['密钥来源'] || '') + '）' : '没有设置' }),
+    el('div', { class: 'k', text: '实际用的地址' }), el('div', { class: 'v', text: x['地址生效'] || '官方接口' }),
+    el('div', { class: 'k', text: '这台电脑' }), el('div', { text: x['系统'] || '' }));
+  showSrc(s);
+  const msg = el('div', { class: 'msg', role: 'alert' });
+  const save = el('button', { class: 'main' }, '保存');
+  const test = el('button', null, '测试连接');
+  save.addEventListener('click', async () => {
+    const n = Number(conc.value);
+    if (!Number.isInteger(n) || n < 1 || n > 8) return showMsg(msg, '同时调用的个数要是 1～8 的整数', true);
+    if (!model.value.trim()) return showMsg(msg, '请填模型名称（例如 claude-opus-5-5）', true);
+    const body = { '地址': url.value.trim(), '模型': model.value.trim(), '并发': n, '走系统代理': proxy.box.checked, '思考摘要': think.box.checked };
+    if (place.value.trim()) body['项目位置'] = place.value.trim();   // 空着不改，免得新报告没有默认位置
+    if (key.value.trim()) body['密钥'] = key.value.trim();
+    save.disabled = true;
+    try {
+      const d = await api('/api/settings', body);
+      key.value = '';
+      key.placeholder = d['有密钥'] ? '已经有密钥了；空着＝不改' : '粘贴中转给的密钥';
+      showSrc(d);
+      await loadSettings();
+      showMsg(msg, '已保存', false);
+    } catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+    finally { save.disabled = false; }
+  });
+  test.addEventListener('click', async () => {
+    if (!window.confirm('测试连接会调用一次模型，花费很少。先保存过的设置才会生效。现在测试？')) return;
+    test.disabled = true;
+    showMsg(msg, '正在测试，最多等一分钟…', false);
+    try { const d = await api('/api/settings/test', {}); showMsg(msg, (d['通'] ? '连接正常：' : '连不上：') + (d['说明'] || ''), !d['通']); }
+    catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+    finally { test.disabled = false; }
+  });
+  box.appendChild(el('div', { class: 'card', style: 'margin-bottom:16px' }, el('h3', { style: 'margin-top:0', text: '连接模型' }),
+    el('div', { class: 'grid2' }, field('中转地址', url), field('密钥', key, '密钥只存在这台电脑上，不会拷进流水线文件夹')),
+    field('新报告默认放在', placeRow),
+    el('details', { class: 'more' }, el('summary', { text: '更多（一般不用改）' }),
+      el('div', { class: 'grid2' }, field('模型', model), field('同时调用几个（1～8）', conc)),
+      el('div', { style: 'margin-top:12px' }, proxy.label, el('div', { class: 'note', text: '一般不勾：程序直接连中转，代理软件断了也不受影响。这台电脑要靠代理才能连上中转的，才勾上。' })),
+      el('div', { style: 'margin-top:8px' }, think.label, el('div', { class: 'note', text: '一般勾着：模型想得久时连接上一直有字在走，中转不会当成断线掐掉；不多花钱。测试连接报“中转返回 400”的，取消勾选、保存后再测。' })),
+      el('h3', { text: '现在的连接' }), src),
+    el('div', { class: 'formbtns' }, save, test), msg));
+  const money = box.appendChild(el('div', { class: 'card', style: 'margin-bottom:16px' }));
+  const rules = box.appendChild(el('div', { class: 'card' }));
+  drawUsage(money, seq);
+  drawRules(rules, seq);
+}
+async function drawUsage(box, seq) {
+  clear(box).append(el('h3', { style: 'margin-top:0', text: '花了多少' }),
+    el('div', { class: 'filter' }, el('span', { text: '看最近：' }), [1, 7, 30].map((n) => el('button', { class: 'small' + (n === usageDays ? ' on' : ''), onclick: () => { usageDays = n; drawUsage(box, seq); } }, n === 1 ? '今天' : n + ' 天'))));
+  const out = box.appendChild(el('div', null, el('p', { class: 'muted', text: '正在统计…' })));
+  let d;
+  try { d = await api('/api/usage' + q({ '天': String(usageDays) })); }
+  catch (e) { if (!stale(seq)) clear(out).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+  if (stale(seq)) return;
+  clear(out);
+  const t = d['合计'] || {};
+  if (!t['次数']) { out.appendChild(empty('这段时间没有调用过模型。')); return; }
+  out.appendChild(el('p', { style: 'margin-top:0' }, el('b', { style: 'font-size:22px', text: fmtYuan(t['估算美元']) || '¥0' }),
+    el('span', { class: 'note', text: '（约 $' + Number(t['估算美元'] || 0).toFixed(2) + '，按官方价估算，实际以中转账单为准）' })));
+  const rows = (d['按项目'] || []).slice().sort((a, b) => (b['估算美元'] || 0) - (a['估算美元'] || 0));
+  const max = Math.max(...rows.map((r) => r['估算美元'] || 0), 0.0001);
+  out.appendChild(el('div', null, rows.map((r) => el('div', { style: 'margin:8px 0' },
+    el('div', { class: 'row' }, el('span', { text: shortName(r['项目']) || '（不属于哪份报告）' }), el('span', { class: 'spacer' }), el('b', { text: fmtYuan(r['估算美元']) || '—' })),
+    el('div', { class: 'bar' }, el('i', { style: 'width:' + Math.max(2, Math.round((r['估算美元'] || 0) * 100 / max)) + '%' }))))));
+  out.appendChild(el('details', { class: 'more' }, el('summary', { text: '按天、按做的事、调用次数和 token（给懂行的人看）' }),
+    ['按天', '按任务'].map((k) => el('div', { class: 'tablewrap', style: 'margin-top:10px' }, el('table', { class: 'list' },
+      el('thead', null, el('tr', null, el('th', { text: k === '按天' ? '日期' : '做的事' }), ['调用次数', '输入 token', '输出 token', '估算美元'].map((x) => el('th', { class: 'num', text: x })))),
+      el('tbody', null, (d[k] || []).map((r) => el('tr', null, el('td', { text: k === '按天' ? r['日期'] : kindName(r['任务']) }),
+        el('td', { class: 'num', text: fmtNum(r['次数'] || 0) }), el('td', { class: 'num', text: fmtNum(r['输入'] || 0) }), el('td', { class: 'num', text: fmtNum(r['输出'] || 0) }),
+        el('td', { class: 'num', text: '$' + Number(r['估算美元'] || 0).toFixed(2) })))))))));
+}
+const RULE_NAME = { '用户口径.md': '写作规矩（每次提意见记下的）', '审稿清单.md': '审稿时逐条对照的清单', '通用检查规则.md': '机器检查的禁用词和规则' };
+async function drawRules(box, seq) {
+  box.append(el('h3', { style: 'margin-top:0', text: '写作规矩' }),
+    el('p', { class: 'note', style: 'margin-top:0', text: '程序写稿、审稿、改稿都照这些来。照意见修改时，以后都要照办的意见会自动记进来，不用手改。点一项看全文。' }));
+  const out = box.appendChild(el('div', null, el('p', { class: 'muted', text: '正在读取…' })));
+  let d;
+  try { d = await api('/api/standards'); }
+  catch (e) { if (!stale(seq)) clear(out).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+  if (stale(seq)) return;
+  clear(out);
+  const files = (Array.isArray(d['文件']) ? d['文件'] : []).filter((f) => !/^_/.test(String(f['路径'] || '')));
+  if (!files.length) { out.appendChild(empty('还没有写作规矩。')); return; }
+  const nice = (p) => RULE_NAME[p] || (/^各章要点[\\\/](\d{2})/.test(p) ? '第' + Number(/(\d{2})/.exec(p)[1]) + '章要点（' + (/风险/.test(p) ? '风险评估法' : '写法和常见错误') + '）' : p.replace(/\.md$/, ''));
+  out.appendChild(el('div', { class: 'tablewrap' }, el('table', { class: 'list' },
+    el('tbody', null, files.map((f) => el('tr', { class: 'click', tabindex: '0', onclick: () => showRule(f, nice(f['路径'])), onkeydown: (e) => { if (e.key === 'Enter') showRule(f, nice(f['路径'])); } },
+      el('td', null, el('div', { text: nice(f['路径']) }), el('div', { class: 'note', text: f['路径'] })), el('td', { class: 'num note', text: fmtNum(f['字数'] || 0) + ' 字' }), el('td', { class: 'note', text: '改于 ' + fmtTime(f['修改']) })))))));
+}
+async function showRule(f, title) {
+  const body = el('div', null, el('p', { class: 'muted', text: '正在读取…' }));
+  openModal(title, body);
+  try {
+    const d = await api('/api/file' + q({ '路径': f['完整路径'] }));
+    clear(body).append(renderDoc(d['文字'] || '', {}), el('div', { class: 'formbtns' }, el('button', { onclick: () => openPath(d['路径'] || f['完整路径']) }, '在电脑上打开')));
+  } catch (e) { if (!DEAD) clear(body).appendChild(el('p', { class: 'bad', text: errText(e) })); }
+}
+
+// ---------- 补充资料：交新资料 → 列出变化 → 勾选确认后只改受影响的章 ----------
+// 接口 /api/project/supplement 回 {变化: 待确认记录或 null}；记录里的“变化”才是一条条的变化（带编号）
+async function showSupplementForm(proj) {
+  const body = el('div', null, el('p', { class: 'muted', text: '正在读取…' }));
+  openModal('补充资料', body);
+  let d;
+  try {
+    // 从任务页点进来的只带文件夹：再读一遍报告，才知道它在不在忙、上次做到哪
+    if (!proj['做过的事']) proj = await api('/api/project' + q({ '路径': proj['文件夹'] }));
+    d = await api('/api/project/supplement' + q({ '路径': proj['文件夹'] }));
+  } catch (e) { if (!DEAD && body.isConnected) clear(body).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+  if (!body.isConnected) return;           // 读的时候弹窗已经关了
+  const busy = proj['做过的事'].find((j) => RUNNING.indexOf(j['状态']) >= 0);
+  if (busy) { clear(body).appendChild(el('p', { text: '程序正在做这份报告（' + kindName(busy['类别']) + '），做完以后再来。' })); return; }
+  const rec = d['变化'];
+  const items = rec && Array.isArray(rec['变化']) ? rec['变化'] : [];
+  clear(body).appendChild(items.length ? pendingChanges(proj, rec, items) : newSupplementForm(proj, rec));
+}
+
+function newSupplementForm(proj, rec) {
+  const files = [];
+  const list = el('ul', { class: 'files' });
+  const redraw = () => {
+    clear(list);
+    files.forEach((f, i) => list.appendChild(el('li', null, icon('file'), el('span', { text: baseName(f) }), el('span', { class: 'note', text: f }), el('span', { class: 'spacer' }),
+      el('button', { class: 'small', onclick: () => { files.splice(i, 1); redraw(); } }, '去掉'))));
+    if (!files.length) list.appendChild(el('li', { class: 'muted', text: '还没有选资料' }));
+  };
+  const add = (arr) => { arr.forEach((x) => { if (x && files.indexOf(x) < 0) files.push(x); }); redraw(); };
+  const unquote = (text) => lines(text).map((x) => x.replace(/^["'“”]+|["'“”]+$/g, ''));
+  redraw();
+  const paste = el('textarea', { placeholder: '也可以把文件路径粘贴在这里，一行一个', style: 'min-height:70px' });
+  const note = textInput('', '例如：初设收口稿、设备清单');
+  const msg = el('div', { class: 'msg', role: 'alert' });
+  // 类比法的报告：补来的可能是类比项目（别的项目）的报告。那要走另一条路：不对照本项目事实库，摘类比事实、重写第3章
+  const analog = proj['方法'] === '类比法';
+  const kinds = analog ? el('div', { class: 'choice', role: 'radiogroup' },
+    radio('supKind', 'own', '本项目的资料', '初设、设备清单、定员表、变更说明', true),
+    radio('supKind', 'analog', '类比项目的资料', '别的同类项目的控评报告、检测报告、体检报告：用来写第3章', false)) : null;
+  const isAnalog = () => !!kinds && !!kinds.querySelector('input[value=analog]:checked');
+  const intro = el('p', { style: 'margin-top:0' });
+  const tip = el('div', { class: 'callout' });
+  const goText = el('span');
+  const goBtn = el('button', { class: 'main' }, icon('play'), goText);
+  const sync = () => {
+    const a = isAnalog();
+    intro.textContent = a ? '类比项目（规模、工艺相近，已经投运的别的项目）的控评报告、检测报告、体检报告交给程序：它把资料摘成“类比事实”，照它重写第3章，再改别的章引用第3章的地方，最后自查。中间不用确认；改之前先备份正文。'
+      : '建设单位补来的初设、设备清单、定员表之类交给程序：它只拿新资料对照现有的事实库，列出哪些不一样。这一步不改事实库、不改正文；列好以后你勾选确认，再只改受影响的章。';
+    tip.textContent = a ? '开始以后会调用模型、要花钱：田林那次约 ¥50（一份 6 万字的控评报告、改 4 个引用第3章的文件），中途出错重来会更多。类比资料单独放在“资料/类比”里，不算本项目的资料，不进事实库。扫描件读不了，体检结果可以用控评报告里职业健康监护那一节。'
+      : '开始以后会调用模型、要花钱：只读新资料和现有事实库，比整份重摘事实库省得多。新资料会拷进项目的“资料/原件”里。';
+    goText.textContent = a ? '开始写第3章' : '开始对照';
+  };
+  if (kinds) kinds.addEventListener('change', sync);
+  sync();
+  goBtn.addEventListener('click', async () => {
+    if (lines(paste.value).length) { add(unquote(paste.value)); paste.value = ''; }
+    if (!files.length) return showMsg(msg, '请至少添加一份补充资料', true);
+    const a = isAnalog();
+    if (a && !window.confirm('按这些类比资料重写第3章？\n\n先摘类比事实，再重写第3章、改别的章引用第3章的地方，最后自查。改之前先备份正文，改了哪些可以到“改过的地方”里和“补类比资料前”的备份比。\n\n会调用模型，大约 ¥50（田林那次的花费），中途出错重来会更多。')) return;
+    goBtn.disabled = true; showMsg(msg, '正在提交…', false);
+    try {
+      const j = await startJob(a ? '类比资料' : '补资料', { '资料': files.slice(), '说明': note.value.trim() }, proj['文件夹']);
+      closeModal();
+      go('job/' + j['号']);
+    } catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+    finally { goBtn.disabled = false; }
+  });
+  const last = rec ? '上一次补的资料（' + (rec['新资料'] || []).join('、') + '）和事实库没有出入，没有要确认的变化。' +
+    ((rec['没转'] || []).length ? '没转成文字、没对照的：' + rec['没转'].join('；') + '。' : '') +
+    (analog ? '那次补的如果是类比项目的资料，在下面选“类比项目的资料”再交一遍。' : '') : '';
+  return el('div', null,
+    last ? el('p', { class: 'note', style: 'margin-top:0', text: last }) : null,
+    kinds ? field('这是谁的资料', kinds) : null,
+    intro,
+    el('div', { class: 'drop' }, el('div', { class: 'acts', style: 'justify-content:center' },
+      el('button', { class: 'main', onclick: async () => add(await pick('文件', true, '选择补充资料（可以多选）')) }, icon('plus'), '添加文件'),
+      el('button', { onclick: async () => add(await pick('文件夹', false, '选择补充资料所在的文件夹')) }, icon('folder'), '添加整个文件夹'))),
+    list,
+    el('details', { class: 'more' }, el('summary', { text: '粘贴路径' }), paste,
+      el('button', { class: 'small', style: 'margin-top:6px', onclick: () => { add(unquote(paste.value)); paste.value = ''; } }, '加进去')),
+    field('这是什么资料（可以不填）', note, '写进交稿说明，以后查得到是哪次补的'),
+    tip,
+    el('div', { class: 'formbtns' }, goBtn), msg);
+}
+
+// 每条变化：类别（新增／更正／补上）、节（事实库的节）、原文、新文（“- ”开头的整条事实）、说明、影响（要改的正文文件）、编号
+function pendingChanges(proj, rec, items) {
+  const prog = rec['进度'] || null;       // 有“进度”：上次“按新资料改”做了一半，事实库可能已经改了，不能换勾选
+  const est = rec['预计'] || {};
+  const chosen = new Set(items.map((x) => x['编号']));
+  const msg = el('div', { class: 'msg', role: 'alert' });
+  const sum = el('p', { class: 'note' });
+  const okBtn = el('button', { class: 'main' }, icon('check'), '按这些改');
+  const dropBtn = el('button', { class: 'danger' }, '全部丢掉');
+  const strip = (s) => String(s || '').replace(/^-\s*/, '');
+  const pick1 = () => items.filter((x) => chosen.has(x['编号']));
+  const filesOf = (arr) => [...new Set(arr.flatMap((x) => x['影响'] || []))].sort();
+  const cost = (fs) => fs.reduce((n, f) => n + (Number(est[f]) || 0), 0);
+  const recount = () => {
+    const fs = filesOf(pick1());
+    sum.textContent = '勾了 ' + chosen.size + ' / ' + items.length + ' 条，' + (fs.length ? '要改 ' + fs.length + ' 个文件：' + fs.map(chapLabel).join('、') + (fmtYuan(cost(fs)) ? '，大约要花' + fmtYuan(cost(fs)).slice(1) : '') : '只改事实库，不用改正文');
+    okBtn.disabled = !chosen.size;
+  };
+  const card = (x) => {
+    const box = el('input', { type: 'checkbox' }); box.checked = true;
+    const item = el('div', { class: 'change-item' + (prog ? ' ro' : '') });
+    box.addEventListener('change', () => { if (box.checked) chosen.add(x['编号']); else chosen.delete(x['编号']); item.classList.toggle('off', !box.checked); recount(); });
+    const k = x['类别'];
+    const [oldL, newL] = k === '更正' ? ['事实库现在写的', '按新资料改成'] : k === '补上' ? ['原来记的“可研没有写”', '新资料写了'] : [null, '新资料里有、事实库里没有'];
+    const fs = x['影响'] || [];
+    item.append(el(prog ? 'div' : 'label', { class: 'ch-head' }, prog ? null : box, pill(k === '更正' ? 'warn' : k === '补上' ? 'run' : 'ok', k), x['节'] ? el('span', { class: 'note', text: x['节'] }) : null),
+      el('div', { class: 'change-content' },
+        oldL && x['原文'] ? el('div', { class: 'ch-old' }, el('div', { class: 'ch-label', text: oldL }), el('div', { class: 'ch-text', text: strip(x['原文']) })) : null,
+        el('div', { class: 'ch-new' }, el('div', { class: 'ch-label', text: newL }), el('div', { class: 'ch-text', text: strip(x['新文']) })),
+        x['说明'] ? el('div', { class: 'ch-why', text: x['说明'] }) : null,
+        el('div', { class: 'note', style: 'margin-top:6px', text: fs.length ? '要改：' + fs.map((f) => chapLabel(f) + ' ' + chapName(f)).join('、') : '只改事实库，正文不用改' })));
+    return item;
+  };
+  okBtn.addEventListener('click', async () => {
+    const want = pick1(), fs = filesOf(want);
+    if (!want.length) return showMsg(msg, '请至少勾一条', true);
+    if (!window.confirm('按勾上的 ' + want.length + ' 条改？\n\n先改事实库、口径表（涉及定员、设备、工艺的连岗位因素表一起改），' + (fs.length ? '再只改这 ' + fs.length + ' 个文件：' + fs.map(chapLabel).join('、') + '，改完自查。改之前先备份正文。' : '正文不用改。') + (fmtYuan(cost(fs)) ? '\n\n会调用模型，' + fmtYuan(cost(fs)) + '。' : ''))) return;
+    okBtn.disabled = true; showMsg(msg, '正在提交…', false);
+    try {
+      const j = await startJob('按新资料改', { '采用': want.map((x) => x['编号']) }, proj['文件夹']);
+      closeModal();
+      go('job/' + j['号']);
+    } catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+    finally { okBtn.disabled = !chosen.size; }
+  });
+  dropBtn.addEventListener('click', async () => {
+    if (!window.confirm('全部丢掉？\n\n只丢掉这份待确认的清单' + (prog ? '' : '，事实库和正文都不动') + '；新资料已经拷进项目，不删。' +
+      (prog ? '\n\n上次“按新资料改”已经改了的不会退回；要看改了哪些，到“改过的地方”里和“补资料前”的备份比。' : ''))) return;
+    dropBtn.disabled = true; showMsg(msg, '正在丢掉…', false);
+    try {
+      await api('/api/project/supplement/discard', { '路径': proj['文件夹'] });
+      closeModal();
+      toast('已经丢掉了');
+      route();
+    } catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+    finally { dropBtn.disabled = false; }
+  });
+  let act = okBtn, tip = el('p', { class: 'note', text: '勾掉不要的，点“按这些改”：先改事实库，再只改用到这些事实的章，改完自查。都不要就点“全部丢掉”。' });
+  if (prog) {
+    // 上次停在半路：照原来的勾选接着改完（改好的文件不重做），或者全部丢掉
+    const last = proj['做过的事'].find((j) => j['类别'] === '按新资料改' && ['失败', '中断', '已取消'].indexOf(j['状态']) >= 0);
+    const n = Object.keys(prog['已改'] || {}).length;
+    tip = el('div', { class: 'callout', text: '上次“按新资料改”做到一半停了' + (n ? '（已经改好 ' + n + ' 个文件）' : '') + '，事实库可能已经改过，不能再换勾选。' +
+      (last ? '点“接着改完”，改好的不重做。' : '到这份报告的“做过的事”里找上次的“按新资料改”，点进去接着做。') });
+    act = last ? el('button', { class: 'main' }, icon('play'), '接着改完') : null;
+    if (act) act.addEventListener('click', async () => {
+      if (!window.confirm('接着改完？会接着调用模型、要花钱；上次改好的文件不重做。')) return;
+      act.disabled = true; showMsg(msg, '正在提交…', false);
+      try { const j = await api('/api/jobs/' + enc(last['号']) + '/again', {}); closeModal(); go('job/' + j['号']); }
+      catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+      finally { act.disabled = false; }
+    });
+  }
+  if (!prog) recount();
+  return el('div', null,
+    el('p', { style: 'margin-top:0' }, '新资料 ', el('b', { text: (rec['新资料'] || []).join('、') }), rec['说明'] ? '（' + rec['说明'] + '）' : '',
+      ' 对照完了' + (rec['时间'] ? '（' + rec['时间'] + '）' : '') + '，和事实库不一样的有 ' + items.length + ' 条。'),
+    (rec['没转'] || []).length ? el('p', { class: 'note', text: '没转成文字、没对照的：' + rec['没转'].join('；') }) : null,
+    tip,
+    el('div', { class: 'changes-list' }, items.map(card)),
+    prog ? null : sum,
+    el('div', { class: 'formbtns' }, dropBtn, act), msg);
+}
+
+// ---------- 启动 ----------
+loadSettings();
+route();
+/* SCRIPT-END */
+</script>
+</body>
+</html>

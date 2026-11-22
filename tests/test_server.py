@@ -486,6 +486,93 @@ class ServerTest(unittest.TestCase):
         finally:
             shutil.rmtree(root, ignore_errors=True)
 
+    def test_new_report_design(self):
+        # 设计专篇：方法不必填；承接的预评价要登记过、是预评价、有正文
+        root = TMP / '专篇新'
+        bad = [
+            ({'文件夹': str(root), '类型': '设计专篇'}, '预评价项目'),
+            ({'文件夹': str(root), '类型': '设计专篇', '预评价': str(EMPTY)}, '不在项目登记'),
+            ({'文件夹': str(root), '类型': '控评'}, '报告类型只能'),
+            ({'文件夹': str(PROJ / '专篇'), '类型': '设计专篇', '预评价': str(PROJ)}, '这个文件夹里已经有东西了'),
+        ]
+        for P, why in bad:
+            with self.assertRaises(server.ApiError, msg=str(P)) as cm:
+                server.build_job('新报告', P, None)
+            self.assertEqual(cm.exception.code, 400)
+        (PROJ / '专篇').mkdir(exist_ok=True)
+        try:
+            with self.assertRaises(server.ApiError) as cm:
+                server.build_job('新报告', {'文件夹': str(PROJ / '专篇' / '子'), '类型': '设计专篇', '预评价': str(PROJ)}, None)
+            self.assertIn('预评价项目文件夹里面', str(cm.exception))
+        finally:
+            shutil.rmtree(PROJ / '专篇', ignore_errors=True)
+        title, params, r = server.build_job('新报告', {'文件夹': str(root), '类型': '设计专篇', '预评价': ' "%s" ' % PROJ,
+                                                     '编号': 'AT-2026-Z099', '方法': '类比法'}, None)
+        self.assertEqual((title, r), ('新报告', str(root)))
+        self.assertEqual((params['类型'], params['预评价'], params['方法'], params['编号'], params['资料']),
+                         ('设计专篇', str(PROJ), '', 'AT-2026-Z099', []))
+        _t, p2, _r = server.build_job('新报告', {'文件夹': str(root), '方法': '类比法'}, None)
+        self.assertNotIn('类型', p2)                                     # 预评价的参数和原来一样
+        # 承接的不是预评价（项目信息写着设计专篇）
+        (PROJ / '项目信息.md').write_text('# 项目信息\n\n- 报告类型：设计专篇\n', encoding='utf-8')
+        try:
+            with self.assertRaises(server.ApiError) as cm:
+                server.build_job('新报告', {'文件夹': str(root), '类型': '设计专篇', '预评价': str(PROJ)}, None)
+            self.assertIn('不是预评价', str(cm.exception))
+            with self.assertRaises(server.ApiError) as cm:          # 专篇不用类比资料流程
+                server.build_job('类比资料', {'资料': [str(PROJ / '正文' / '01_总论.md')]}, str(PROJ))
+            self.assertIn('设计专篇用承接的预评价报告的类比事实', str(cm.exception))
+        finally:
+            (PROJ / '项目信息.md').unlink()
+        self.assertFalse(root.exists())
+
+    def test_new_report_design_date_after_pre(self):
+        # 专篇日期早于承接的预评价报告日期：400（前不引后）；同月、晚于、认不出的放过
+        self.assertTrue(server._earlier('二〇二六年十月', '2026年11月'))
+        self.assertFalse(server._earlier('2026年11月', '2026年11月5日'))
+        self.assertFalse(server._earlier('下个月', '2026年11月'))
+        root = TMP / '专篇日期'
+        info = PROJ / '项目信息.md'
+        had = info.read_text(encoding='utf-8') if info.exists() else None
+        info.write_text('# 项目信息\n\n- 项目名称：甲\n- 报告日期：2026年11月\n', encoding='utf-8')
+        try:
+            with self.assertRaises(server.ApiError) as cm:
+                server.build_job('新报告', {'文件夹': str(root), '类型': '设计专篇', '预评价': str(PROJ), '日期': '2026年10月'}, None)
+            self.assertIn('早于承接的预评价', str(cm.exception))
+            _t, p, _r = server.build_job('新报告', {'文件夹': str(root), '类型': '设计专篇', '预评价': str(PROJ), '日期': '2026年12月'}, None)
+            self.assertEqual(p['日期'], '2026年12月')
+        finally:
+            if had is None:
+                info.unlink()
+            else:
+                info.write_text(had, encoding='utf-8')
+
+    def test_project_page_design_two_volumes(self):
+        sk = config.ROOT / 'templates' / '项目骨架_设计专篇'
+        if not (sk / '附件册' / '项目信息.md').is_file():
+            self.skipTest('设计专篇骨架还没有')
+        root = TMP / '专篇页'
+        shutil.copytree(sk, root)
+        reg = config.REGISTER
+        old = reg.read_text(encoding='utf-8')
+        reg.write_text(old.rstrip('\n') + '\n| 专篇页 | — | %s | | | 设计专篇 |\n' % root, encoding='utf-8')
+        try:
+            code, _r, d, _t = self.req('GET', '/api/project?' + server.urllib.parse.urlencode({'路径': str(root)}))
+            self.assertEqual(code, 200, d)
+            self.assertEqual((d['类型'], d['方法']), ('设计专篇', ''))
+            self.assertEqual([v['卷'] for v in d['卷']], ['主报告', '附件册'])
+            self.assertEqual([v['PDF'] for v in d['卷']], [None, None])     # 每卷各自的 PDF（还没出）
+            files = [c['文件'] for c in d['章节']]
+            self.assertTrue(any(f.startswith('附件册/') for f in files) and files[0].startswith('01'))
+            self.assertFalse(any(c['写好'] for c in d['章节']))            # 和骨架一样的不算写好
+            server._overview_cache['v'] = None                         # 总览 5 秒内用缓存
+            code, _r, o, _t = self.req('GET', '/api/overview')
+            self.assertEqual(next(x for x in o['项目'] if x['项目'] == '专篇页')['类型'], '设计专篇')
+        finally:
+            reg.write_text(old, encoding='utf-8')
+            server._overview_cache['v'] = None
+            shutil.rmtree(root, ignore_errors=True)
+
     def test_revise_all_without_projects_400(self):
         old = tools.registered
         tools.registered = lambda: []

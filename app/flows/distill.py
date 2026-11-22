@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 from .. import config, llm, rules, tools
+from ..tools import doctype as DT
 from . import common as C
 from .review import pmap
 from .revise import count_hits
@@ -89,7 +90,7 @@ COLD = Path.home() / 'Desktop/200MW超临界发电项目/收尾工作区/_冷轧
 def _project_docs():
     """各登记项目（和没登记的冷轧）的 检查规则.md、审查/可读性改写要求.md（在项目文件夹或上一级的 审查/ 里）。"""
     out = []
-    rows = tools.registered()
+    rows = [r for r in tools.registered() if r.get('类型', DT.PRE) == DT.PRE]     # 设计专篇项目不拿来提炼预评价的标准
     if (COLD / '检查规则.md').exists() and not any(Path(r['文件夹']).expanduser() == COLD for r in rows):
         rows = rows + [{'项目': '晋钢冷轧（未登记）', '文件夹': str(COLD)}]
     for r in rows:
@@ -108,7 +109,10 @@ def _check_roots():
     """(定稿项目, 两份骨架)：检查词在这些正文里有命中就是太宽。骨架新建项目后要零错误（自测查这个），
     占位符【待填】【待核】在骨架正文里；马沟示例豁免了全部通用规则，不拿来验证。"""
     extra = [config.ROOT / 'templates' / '项目骨架', config.ROOT / 'templates' / '项目骨架_风险评估法']
-    return tools.finished_projects(), [p for p in extra if (p / '正文').is_dir()]
+    # 设计专篇骨架（主报告和附件册）也要零错误：新加的禁用词在专篇骨架里有命中的同样太宽
+    extra += list(DT.volumes(DT.skeleton(DT.DESIGN))) if (DT.skeleton(DT.DESIGN) / '项目信息.md').exists() else []
+    finished = [p for p in tools.finished_projects() if not tools.is_design(p)]     # 第一版专篇卡不走提炼标准
+    return finished, [p for p in extra if (p / '正文').is_dir()]
 def _today():
     return datetime.date.today().isoformat()
 
@@ -411,6 +415,8 @@ def step_k(job):
                 new['审稿维度'] = new['审稿维度'][:MAX_DIMS]
                 data = new
         except llm.CallError as e:
+            if e.fatal:
+                raise
             job.info('压缩没成，用原稿：%s' % str(e)[:80])
     entries, dims = _by_theme(data['条目']), data['审稿维度']
     final, demoted, dropped = _verify(job, entries)
@@ -649,6 +655,8 @@ def _fit_card(job, c, limit, hard):
     try:
         new = _shrink_card(job, c, why, limit)
     except llm.CallError as e:
+        if e.fatal:
+            raise
         return text, '压缩没成（%s）' % str(e)[:60]
     if new:
         new['文件'] = c['文件']

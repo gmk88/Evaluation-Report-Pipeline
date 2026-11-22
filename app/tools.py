@@ -13,6 +13,7 @@ from . import config
 if str(config.SCRIPTS) not in sys.path:
     sys.path.insert(0, str(config.SCRIPTS))
 from pe import checks as _checks  # noqa: E402
+from pe import doctype  # noqa: E402
 from pe import mdparse  # noqa: E402
 from pe.model import Project  # noqa: E402
 
@@ -51,6 +52,7 @@ def report(*args, timeout=3600):
 # ---------------- 项目登记 ----------------
 
 def registered():
+    """项目登记的各行。第6列“类型”空着＝预评价（老的5列登记照样读）。"""
     rows = []
     if not config.REGISTER.exists():
         return rows
@@ -58,16 +60,19 @@ def registered():
         cells = [x.strip() for x in ln.strip().strip('|').split('|')]
         if len(cells) >= 3 and cells[0] not in ('项目', '') and not set(cells[0]) <= set('-: ') and ln.lstrip().startswith('|'):
             rows.append({'项目': cells[0], '方法': cells[1], '文件夹': cells[2], '样板': cells[3] if len(cells) > 3 else '',
-                         '定稿': cells[4] if len(cells) > 4 else ''})
+                         '定稿': cells[4] if len(cells) > 4 else '',
+                         '类型': (cells[5] if len(cells) > 5 else '') or doctype.PRE})
     return rows
 
 
-def register_add(name, method, folder):
+def register_add(name, method, folder, kind=''):
+    """登记一行（6格）。预评价的“类型”格空着；设计专篇的“方法”格写“—”。"""
     folder = str(Path(folder).resolve())
     if any(str(Path(r['文件夹']).expanduser().resolve()) == folder for r in registered()):
         return False
-    text = read(config.REGISTER).rstrip('\n') + '\n| %s | %s | %s | | |\n' % (name, method, folder)
-    write(config.REGISTER, text)
+    kind = '' if kind in ('', doctype.PRE) else kind
+    text = read(config.REGISTER).rstrip('\n') + '\n| %s | %s | %s | | | %s |\n' % (name, method or '—', folder, kind)
+    write(config.REGISTER, text.replace('|  |\n', '| |\n'))
     return True
 
 
@@ -89,7 +94,20 @@ def project_name(root):
         return Path(root).name
 
 
+def report_type(root):
+    """报告类型：预评价、设计专篇、设计专篇附件册（项目信息.md 的“报告类型”，没写的是预评价）。"""
+    return doctype.type_of(root)
+
+
+def is_design(root):
+    """设计专篇的主报告或附件册。"""
+    return report_type(root) != doctype.PRE
+
+
 def method_of(root):
+    """预评价的评价方法（类比法、风险评估法）。设计专篇没有方法，返回空字符串（不回落成类比法）。"""
+    if is_design(root):
+        return ''
     r = project_row(root)
     if r and r['方法'] in ('类比法', '风险评估法'):
         return r['方法']
@@ -102,12 +120,13 @@ def method_of(root):
     return '类比法'
 
 
-def sample_for(method, exclude=None):
-    """项目登记里方法相同、样板为“是”的项目文件夹。"""
+def sample_for(method, exclude=None, kind=doctype.PRE):
+    """项目登记里类型相同（预评价还要方法相同）、样板为“是”的项目文件夹。"""
     ex = str(Path(exclude).resolve()) if exclude else ''
     for r in registered():
         f = Path(r['文件夹']).expanduser()
-        if r['方法'] == method and r['样板'] == '是' and str(f.resolve()) != ex and (f / '正文').is_dir():
+        same = r['方法'] == method if kind == doctype.PRE else True
+        if r.get('类型', doctype.PRE) == kind and same and r['样板'] == '是' and str(f.resolve()) != ex and (f / '正文').is_dir():
             return f
     return None
 
@@ -175,6 +194,9 @@ def overview():
         if root.is_dir():
             c = check(root)
             row.update(错误=c['错误'], 提示=c['提示'], 待办=c['待办'])
+            for vol in doctype.volumes(root)[1:]:          # 设计专篇的附件册：两卷的条数合起来
+                c2 = check(vol)
+                row.update(错误=row['错误'] + c2['错误'], 提示=row['提示'] + c2['提示'], 待办=row['待办'] + c2['待办'])
             mds = list((root / '正文').glob('*.md'))
             row['正文修改'] = max(p.stat().st_mtime for p in mds) if mds else None
             pdfs = sorted((root / '输出').glob('*.pdf'), key=lambda p: p.stat().st_mtime)
@@ -350,21 +372,27 @@ def _cut_cells(ln, cell):
     return '| ' + ' | '.join(c.strip()[:cell] + ('…' if len(c.strip()) > cell else '') for c in cells) + ' |'
 
 
-def digest(md, cell=40, budget=40000):
+def digest(md, cell=40, budget=40000, notes=False):
     """章的摘要：各级标题、表题和表格（每格最多 cell 字）、小结段落。给后面各章看前文、跨章核对用。
-    超过 budget 字时把每格再截短。"""
+    超过 budget 字时把每格再截短。notes=True（设计专篇）另保留“注：”开头的行和一级标题下的第一段（章首结论）。"""
     while True:
-        out, keep = [], False
+        out, keep, lead = [], False, False
         for ln in md.split('\n'):
             if ln.startswith('#'):
                 out.append(ln)
                 keep = bool(re.search(r'小结|结论|评价结果|总体评价', ln))
+                lead = notes and ln.startswith('# ')
             elif re.match(r'^(续)?表\s*[0-9A-Z]', ln):
                 out.append(ln)
             elif ln.startswith('|'):
                 out.append(_cut_cells(ln, cell) if not set(ln.strip()) <= set('|-: ') else ln)
             elif (keep or ln.startswith('评价结果')) and ln.strip() and not ln.startswith('<!--'):
                 out.append(ln)
+            elif notes and re.match(r'^注[：:]', ln):
+                out.append(ln)
+            elif lead and ln.strip() and not ln.startswith('<!--'):
+                out.append(ln)
+                lead = False
         text = '\n'.join(out)
         if len(text) <= budget or cell <= 8:
             return text[:budget * 2]
@@ -390,8 +418,8 @@ def project_settings(root):
 
 def source_texts(root):
     """项目资料的文字版 [(资料名, 全文)]：流水线设置.json 的“事实来源” → 资料/文本/（同一来源的块拼回整份）
-    → 上一级的 提取文本/（不含送审稿）。"""
-    root = Path(root)
+    → 上一级的 提取文本/（不含送审稿）。设计专篇附件册没有自己的资料，取主报告的。"""
+    root = Path(doctype.main_root(root))
     picked = project_settings(root).get('事实来源')
     if picked:
         files = [Path(x) if Path(x).is_absolute() else root / x for x in picked]
@@ -430,10 +458,10 @@ def backup_std(reason):
 
 
 def facts(root):
-    """事实库、口径表、岗位因素表（有哪个给哪个）。"""
+    """事实库、口径表、岗位因素表（有哪个给哪个）。设计专篇附件册取主报告的。"""
     out = []
     for name in ('事实库.md', '口径.md', '岗位因素表.md'):
-        p = Path(root) / '资料' / name
+        p = Path(doctype.main_root(root)) / '资料' / name
         if p.exists():
             out.append((name, read(p)))
     return out
@@ -445,7 +473,7 @@ ANALOG_DIR = '类比'
 
 
 def analog_dir(root):
-    return Path(root) / '资料' / ANALOG_DIR
+    return Path(doctype.main_root(root)) / '资料' / ANALOG_DIR
 
 
 def analog_texts(root):

@@ -32,6 +32,8 @@ const A = args || {}
 const F = A.工厂 || '/Users/a1234/Desktop/评价报告流水线'
 const 项目 = A.项目
 if (!项目) throw new Error('缺 args.项目（项目文件夹的完整路径）')
+// 设计专篇（项目信息.md 写“报告类型：设计专篇”）只走 app/（网页或命令行），准备一步查到就报错退出
+const 专篇提示 = '职业病防护设施设计专篇不走这条 Workflow 流水线：请在网页“写一份新报告”选“设计专篇”，或运行 python -m app.cli 新报告 文件夹 --类型 设计专篇 --预评价 预评价文件夹（审稿、改稿在网页项目页或 python -m app.cli 审稿／改稿）'
 const 改 = A.修改 !== false
 const 只看 = (A.章 || '').split(/[,，、\s]+/).filter(Boolean)
 const R = `python3 ${F}/scripts/report.py`
@@ -49,7 +51,7 @@ const 前缀 = f => f.replace(/\.md$/, '')
 const 准备结果 = {
   type: 'object',
   properties: {
-    方法: { type: 'string', enum: ['类比法', '风险评估法'] },
+    方法: { type: 'string', enum: ['类比法', '风险评估法', '设计专篇'] },
     文件: { type: 'array', items: { type: 'object', properties: { 文件: { type: 'string' }, 字数: { type: 'integer' } }, required: ['文件', '字数'] } },
     错误: { type: 'integer' }, 提示: { type: 'integer' }, 待办: { type: 'integer' },
     备份: { type: 'string' },
@@ -96,12 +98,14 @@ const 检结果 = {
 
 phase('准备')
 const p = await 跑(通则 + `任务：审稿前准备。
+0. grep ${项目}/项目信息.md 的“报告类型”：写的是“设计专篇”或“设计专篇附件册”的，什么都不做（不备份），方法返回“设计专篇”、文件返回空列表、条数写 0、事实来源写“无”。
 1. 运行 ${R} check ${项目} --json，记下“正文文件”列表（文件名、字数）和错误、提示、待办条数。
 2. 看 正文/03_*.md 的一级标题：“职业健康风险评估分析与评价”是风险评估法，“类比企业（项目）调查与分析”是类比法。
 3. ${改 ? '在项目文件夹里执行 cp -R 正文 "备份/正文_$(date +%Y%m%d_%H%M)_审稿前"（没有 备份/ 先建），返回备份路径。' : '只审不改，不用备份，备份写空。'}
 4. 事实来源：${A.事实 ? '用 ' + A.事实 + '。' : '资料/事实库.md 存在就写它；否则在项目文件夹和上两级找可研的文字版（资料/文本/、提取文本/ 下的 txt），写出路径；都没有写“无”。'}
 返回：方法、全部正文文件、三项条数、备份路径、事实来源。`, { label: '准备', phase: '准备', schema: 准备结果, effort: 'low' })
 if (!p) throw new Error('准备没做成，停下')
+if (p.方法 === '设计专篇') throw new Error(专篇提示)
 const files = p.文件.filter(f => !只看.length || 只看.some(x => f.文件.startsWith(x)))
 log(`${p.方法}，审 ${files.length} 个文件；审前检查：错误 ${p.错误}、提示 ${p.提示}、待办 ${p.待办}`)
 

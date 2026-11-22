@@ -28,7 +28,7 @@ FONT_LATIN = 'Times New Roman'
 # 仿宋、宋体没有 ² ³ ₂ ₆ 这类上下标字形，Word、WPS 各自换别的字体显示，打印效果因机器而异；
 # 生成时拆成普通字符加 w:vertAlign 上下标格式（与 WPS 的上标/下标按钮存的一样），md 里照写 m³、SO₂
 SUP, SUP_PLAIN = '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿⁱ', '0123456789+-=()ni'
-SUB, SUB_PLAIN = '₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₒₓₕₖₗₘₙₚₛₜ', '0123456789+-=()aeoxhklmnpst'
+SUB, SUB_PLAIN = '₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₒₓₕₖₗₘₙₚₛₜᵢ', '0123456789+-=()aeoxhklmnpsti'
 TO_PLAIN = str.maketrans(SUP + SUB, SUP_PLAIN + SUB_PLAIN)
 TO_SCRIPT = {'superscript': dict(zip(SUP_PLAIN, SUP)), 'subscript': dict(zip(SUB_PLAIN, SUB))}
 RE_SCRIPT = re.compile('([%s]+)|([%s]+)' % (SUP, SUB))
@@ -71,13 +71,16 @@ def compact(s):
     return re.sub(r'\s+', '', s or '')
 
 
-def run(s, size=BODY_SIZE, bold=False, font=FONT_EA):
+def run(s, size=BODY_SIZE, bold=False, font=FONT_EA, spacing=0):
+    """spacing：字距（twip），设计专篇正文段落用 26（每行 30 字，WS/T 882 附录D）；0 不写。"""
     r = el('r')
     rp = sub(r, 'rPr')
     sub(rp, 'rFonts', ascii=FONT_LATIN, hAnsi=FONT_LATIN, eastAsia=font, cs=font, hint='eastAsia')
     if bold:
         sub(rp, 'b')
     sub(rp, 'color', val='000000')
+    if spacing:
+        sub(rp, 'spacing', val=spacing)
     sub(rp, 'sz', val=size)
     sub(rp, 'szCs', val=size)
     sub(rp, 'lang', val='en-US', eastAsia='zh-CN')

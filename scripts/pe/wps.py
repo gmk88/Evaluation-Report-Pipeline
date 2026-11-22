@@ -33,6 +33,9 @@ WPS_EXIT = {3: '导出超时', 100: '没有登录 WPS 账号', 101: 'WPS 账号�
             212: '没有输出文件夹的写权限'}
 REQUIRED_FONTS = {'仿宋': re.compile(r'FangSong|FangS-', re.I),
                   '宋体': re.compile(r'SimSun', re.I)}
+# 设计专篇封面、封二用的字体（WS/T 882 附录D 附件1、附件2）：Word 里用到才要求 PDF 里有
+OPTIONAL_FONTS = {'华文中宋': re.compile(r'STZhongsong|STZhongS', re.I),
+                  '黑体': re.compile(r'SimHei', re.I)}
 # WPS 命令行认不出字体时换上的字体；正文出现即说明有文字没用上嵌入字体
 SUBSTITUTES = re.compile(r'PingFang|STSongti|Songti|STHeiti|Heiti', re.I)
 LEADER = re.compile(r'^[.·…]+$')
@@ -121,10 +124,11 @@ def pdf_fonts(pdf):
     return names, spans
 
 
-def font_problems(names, spans):
-    """按字体名和替换字体文字段给出问题（空表＝通过）。"""
+def font_problems(names, spans, extra=()):
+    """按字体名和替换字体文字段给出问题（空表＝通过）。extra：Word 里用到的 OPTIONAL_FONTS 字体名，也要求有。"""
     problems = []
-    missing = [label for label, pattern in REQUIRED_FONTS.items() if not any(pattern.search(n) for n in names)]
+    need = dict(REQUIRED_FONTS, **{k: OPTIONAL_FONTS[k] for k in extra if k in OPTIONAL_FONTS})
+    missing = [label for label, pattern in need.items() if not any(pattern.search(n) for n in names)]
     if missing:
         problems.append('PDF 没有用上%s（实际字体：%s）：%s' % ('、'.join(missing), '、'.join(sorted(names)),
                                                        '这台电脑可能没装这些字体' if IS_WIN else 'WPS 没用嵌入字体'))
@@ -147,8 +151,16 @@ def pdf_images(pdf):
         return len({im[0] for page in doc for im in page.get_images(full=True)})
 
 
-def check_pdf(pdf, images):
-    problems = font_problems(*pdf_fonts(pdf))
+def docx_fonts(docx):
+    """Word 里用到的 OPTIONAL_FONTS 字体。"""
+    with zipfile.ZipFile(docx) as z:
+        parts = {n: z.read(n) for n in z.namelist() if re.match(r'word/(document|header\d+|footer\d+)\.xml$', n)}
+    used = embed_fonts.used_fonts(parts)
+    return [k for k in OPTIONAL_FONTS if k in used]
+
+
+def check_pdf(pdf, images, extra=()):
+    problems = font_problems(*pdf_fonts(pdf), extra=extra)
     got = pdf_images(pdf)
     if got < images:
         problems.append('PDF 里只有 %d 张图，Word 里有 %d 张：WPS 丢了图（大 PNG 常见），查 图/ 里的图片格式' % (got, images))
@@ -200,6 +212,7 @@ def run(root, docx, headings, out=None, publish=False, log=print):
     copy = dest / docx.name
     shutil.copy2(docx, copy)
     images = docx_images(copy)
+    extra = docx_fonts(copy)
     render = dest / '渲染用' / copy.name
     cache = {}
     log('第一轮：嵌入字体、WPS 导出、回填目录页码……')
@@ -207,7 +220,7 @@ def run(root, docx, headings, out=None, publish=False, log=print):
     with tempfile.TemporaryDirectory(prefix='wps-first-', dir=dest) as first_dir:
         first = Path(first_dir) / 'first.pdf'
         export(wps, render, first)
-        check_pdf(first, images)
+        check_pdf(first, images, extra)
         initial = finalize.apply(copy, first, headings)
         if initial['找不到的标题'] or initial['目录条数'] != len([h for h in headings if h[0] <= 3]):
             raise WpsError('第一轮 PDF 缺标题或目录条数不符：%s' % initial['找不到的标题'][:5])
@@ -215,7 +228,7 @@ def run(root, docx, headings, out=None, publish=False, log=print):
     _render_copy(copy, render, cache)
     final = copy.with_suffix('.pdf')
     export(wps, render, final)
-    check_pdf(final, images)
+    check_pdf(final, images, extra)
     checked = finalize.apply(copy, final, headings, check=True)
     if checked['错误'] or checked['找不到的标题']:
         raise WpsError('第二轮核对没通过：' + '；'.join(checked['错误'][:5] + checked['找不到的标题'][:5]))

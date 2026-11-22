@@ -10,7 +10,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import checks
+from . import checks, doctype
 from .model import Project
 
 try:
@@ -231,11 +231,12 @@ def cmd_materials(a):
     # 流水线自己写进 资料/ 的文件（事实库、口径表、岗位因素表、摘事实的中间稿、说明）不是资料，不转
     made = {root / '资料' / n for n in ('事实库.md', '口径.md', '岗位因素表.md', '说明.md')}
     frag = root / '资料' / '事实片段'
+    analog = root / '资料' / '类比'      # 类比项目的资料（别的项目的报告），不是本项目资料
     files = []
     for s in srcs:
         if s.is_dir():
             files += sorted(p for p in s.rglob('*') if p.is_file() and out not in p.parents and frag not in p.parents
-                            and p not in made and not p.name.startswith(('.', '~$')))
+                            and analog not in p.parents and p not in made and not p.name.startswith(('.', '~$')))
         elif s.exists():
             files.append(s)
         else:
@@ -276,14 +277,19 @@ def run_brief(cmd, label):
 
 
 def cmd_publish(a):
+    """设计专篇主报告：两卷（主报告、附件册）都检查为 0 才出；build、wps 对主报告文件夹运行时会接着出附件册。"""
     root = Path(a.folder).resolve()
-    pj = Project(root).resolve()
-    issues = checks.run(pj)
-    c = checks.summary(issues)
+    c = {'错误': 0, '提示': 0, '待办': 0}
+    for v in doctype.volumes(root):
+        issues = checks.run(Project(v).resolve())
+        cv = checks.summary(issues)
+        for k in c:
+            c[k] += cv.get(k, 0)
+        if cv['错误']:
+            print('%s检查有错误 %d 条，不出稿：' % ('附件册' if v != root else '', cv['错误']))
+            for lv, s, m in [x for x in issues if x[0] == '错误'][:30]:
+                print('  【%s】%s' % (s, m))
     if c['错误']:
-        print('检查有错误 %d 条，不出稿：' % c['错误'])
-        for lv, s, m in [x for x in issues if x[0] == '错误'][:30]:
-            print('  【%s】%s' % (s, m))
         return 1
     with open(SKILL / '.出稿锁', 'w') as fh:
         t0 = time.time()
@@ -318,7 +324,8 @@ def registered():
         cells = [x.strip() for x in ln.strip().strip('|').split('|')]
         if len(cells) >= 3 and cells[0] not in ('项目', '') and not set(cells[0]) <= set('-: '):
             rows.append({'项目': cells[0], '方法': cells[1], '文件夹': cells[2],
-                         '样板': cells[3] if len(cells) > 3 else ''})
+                         '样板': cells[3] if len(cells) > 3 else '',
+                         '类型': cells[5] if len(cells) > 5 and cells[5] else ''})   # 第6列空＝预评价
     return rows
 
 
@@ -336,27 +343,36 @@ def pdf_pages(p):
 
 
 def cmd_overview(a):
+    """设计专篇在“方法”列写“设计专篇”，附件册另起一行（项目名后加“（附件册）”）。"""
     fmt = '%m-%d %H:%M'
     print('| 项目 | 方法 | 错误 | 其中通用规则 | 提示 | 待办 | 正文最后修改 | 最新PDF |')
     print('|---|---|---|---|---|---|---|---|')
     for r in registered():
         root = Path(r['文件夹']).expanduser()
-        try:
-            pj = Project(root).resolve()
-            issues = checks.run(pj)
-        except Exception as e:  # noqa: BLE001  旧格式的项目读不了，照实列出
-            print('| %s | %s | 读不了：%s | | | | | |' % (r['项目'], r['方法'], str(e)[:40]))
-            continue
-        c = checks.summary(issues)
-        common = sum(1 for lv, _, m in issues if lv == '错误' and m.startswith('通用规则'))
-        mds = list((root / '正文').glob('*.md'))
-        body_t = time.strftime(fmt, time.localtime(max(p.stat().st_mtime for p in mds))) if mds else '—'
-        pdfs = sorted((root / '输出').glob('*.pdf'), key=lambda p: p.stat().st_mtime)
-        pdf = ('%s，%s 页' % (time.strftime(fmt, time.localtime(pdfs[-1].stat().st_mtime)), pdf_pages(pdfs[-1]))
-               if pdfs else '—')
-        print('| %s | %s | %d | %d | %d | %d | %s | %s |' % (r['项目'], r['方法'], c['错误'], common, c['提示'],
-                                                          c['待办'], body_t, pdf))
+        vols = doctype.volumes(root) if root.is_dir() else [root]
+        for i, v in enumerate(vols):
+            name = r['项目'] + ('（附件册）' if i else '')
+            kind = doctype.type_of(v)
+            _overview_row(v, name, r['方法'] if kind == doctype.PRE else kind, fmt)
     return 0
+
+
+def _overview_row(root, name, method, fmt):
+    try:
+        pj = Project(root).resolve()
+        issues = checks.run(pj)
+    except Exception as e:  # noqa: BLE001  旧格式的项目读不了，照实列出
+        print('| %s | %s | 读不了：%s | | | | | |' % (name, method, str(e)[:40]))
+        return
+    c = checks.summary(issues)
+    common = sum(1 for lv, _, m in issues if lv == '错误' and m.startswith('通用规则'))
+    mds = list((root / '正文').glob('*.md'))
+    body_t = time.strftime(fmt, time.localtime(max(p.stat().st_mtime for p in mds))) if mds else '—'
+    pdfs = sorted((root / '输出').glob('*.pdf'), key=lambda p: p.stat().st_mtime)
+    pdf = ('%s，%s 页' % (time.strftime(fmt, time.localtime(pdfs[-1].stat().st_mtime)), pdf_pages(pdfs[-1]))
+           if pdfs else '—')
+    print('| %s | %s | %d | %d | %d | %d | %s | %s |' % (name, method, c['错误'], common, c['提示'],
+                                                      c['待办'], body_t, pdf))
 
 
 # ---------------- 用量：读 ~/.claude/projects 的对话记录 ----------------

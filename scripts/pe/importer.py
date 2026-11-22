@@ -11,11 +11,16 @@ from .common import W, R, NS, TO_SCRIPT, text_of, text_md
 from . import mdparse
 from .model import judge_col, count_clause, body_rows
 from .info import write_info
+from . import doctype
 
 WP = '{%s}' % NS['wp']
 A = '{%s}' % NS['a']
 RE_NO = re.compile(r'^[A-Z]{1,6}-\d{4}-[A-Z0-9]+$')
 RE_DATE = re.compile(r'^\d{4}年\d{1,2}月\d{1,2}日$')
+# 设计专篇封面（WS/T 882 附件1）：“报告编号：AT-2026-Z013”一行；日期常写“二〇二六年八月”
+RE_NO_LABEL = re.compile(r'^报告编号[：:]\s*([A-Z]{1,6}-\d{4}-[A-Z0-9]+)$')
+RE_DATE_CN = re.compile(r'^[〇零一二三四五六七八九]{4}年[一二三四五六七八九十]{1,3}月(?:[一二三四五六七八九十]{1,3}日)?$')
+RE_LICENCE = re.compile(r'^(?:设计单位)?资质证书编号[：:]\s*(.+)$')
 RE_COUNT = re.compile(r'(?P<subj>表\d+(?:\.\d+)*-\d+|[\u4e00-\u9fa5]{2,10})共评价(?P<n>\d+)项，'
                       r'(?P<rest>其中(?:[\u4e00-\u9fa5]+\d+项、?)+|均判为[\u4e00-\u9fa5]+?(?=[。；，]))')
 RE_KCP = re.compile(r'(\d+)(个职业病危害关键控制点)')
@@ -104,26 +109,39 @@ class Importer:
         texts = [text_of(k) for k in kids]
         info = {}
         cover_end = next((i for i, k in enumerate(kids) if k.find('.//' + W + 'sectPr') is not None), len(kids) - 1)
-        ti = next((i for i in range(cover_end + 1) if '预评价报告' in texts[i]), None)
+        # 封面标题行：预评价“职业病危害预评价报告”，设计专篇“职业病防护设施设计专篇”
+        design = any(texts[i].strip().endswith('设计专篇') for i in range(cover_end + 1))
+        mark = '设计专篇' if design else '预评价报告'
+        ti = next((i for i in range(cover_end + 1) if mark in texts[i]), None)
+        if design:
+            info['报告类型'] = doctype.DESIGN
         if ti is not None:
-            info['封面名称'] = [t.strip() for t in texts[:ti] if t.strip()]
+            info['封面名称'] = [t.strip() for t in texts[:ti] if t.strip() and not (design and RE_NO_LABEL.match(t.strip()))]
         for i in range(cover_end + 1):
             t = texts[i].strip()
-            if RE_NO.match(t):
-                info['报告编号'] = t
-            elif RE_DATE.match(t):
+            m = RE_NO_LABEL.match(t) if design else None     # 预评价照旧只认单独一行的编号
+            if RE_NO.match(t) or m:
+                info['报告编号'] = m.group(1) if m else t
+            elif RE_DATE.match(t) or (design and RE_DATE_CN.match(t)):
                 info['报告日期'] = t
+            elif design and RE_LICENCE.match(t):
+                info['资质证书编号'] = RE_LICENCE.match(t).group(1).strip()
             elif ti is not None and i > ti and t.endswith(('公司', '中心', '研究院', '研究所')):
                 info['评价单位'] = t
         for t in texts:
-            m = re.search(r'在为(.+?)项目提供', t)
+            m = re.search(r'在(.+?)职业病防护设施设计中', t) if design else re.search(r'在为(.+?)项目提供', t)
             if m:
                 info['项目名称'] = m.group(1)
             m = re.search(r'法定代表人[：:]\s*(\S+)', t)
-            if m:
+            if m and not (design and m.group(1).startswith(('（', '('))):   # 专篇声明页是“设计单位法定代表人：（签名）”
                 info['法定代表人'] = m.group(1)
         if '项目名称' not in info and info.get('封面名称'):
             info['项目名称'] = ''.join(info['封面名称'])
+        if design and not info.get('评价单位'):   # 专篇声明开头是设计单位全称
+            m = next((re.match(r'^(.+?(?:公司|中心|研究院|研究所))遵守', t.strip()) for t in texts
+                      if '遵守国家有关法律' in t), None)
+            if m:
+                info['评价单位'] = m.group(1)
         people = []
         for k in kids:
             if k.tag == W + 'tbl':

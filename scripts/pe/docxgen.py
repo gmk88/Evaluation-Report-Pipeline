@@ -10,7 +10,10 @@ from lxml import etree as E
 from .common import (update_app_stats, NS, W, R, XML_SPACE, el, sub, run, text_of, order_children, PPR_ORDER, TCPR_ORDER,
                      SECT_ORDER, BODY_SIZE, CAPTION_SIZE, TABLE_SIZE, LINE_BODY, INDENT_BODY,
                      PORTRAIT_TEXT_WIDTH, LANDSCAPE_TEXT_WIDTH, write_docx, split_scripts)
+from .common import FONT_EA
 from .model import RE_PH, column_kind
+from . import doctype, omml
+from .mdparse import split_inline
 
 SKILL_DIR = Path(__file__).resolve().parents[2]
 TEMPLATE = SKILL_DIR / 'templates' / '预评价报告模板.docx'
@@ -114,14 +117,14 @@ def replace_placeholders(root, value_of):
                 t.set(XML_SPACE, 'preserve')
 
 
-def inline_runs(text, size=BODY_SIZE, bold=False):
+def inline_runs(text, size=BODY_SIZE, bold=False, spacing=0):
     out, b = [], False
     for part in re.split(r'(\*\*)', text):
         if part == '**':
             b = not b
             continue
         if part:
-            out.append(run(part.replace('\\*', '*'), size=size, bold=bold or b))
+            out.append(run(part.replace('\\*', '*'), size=size, bold=bold or b, spacing=spacing))
     return out
 
 
@@ -141,7 +144,7 @@ def all_bold(text):
 
 
 def para(text='', align='both', indent=INDENT_BODY, size=BODY_SIZE, bold=False, keep_next=False,
-         keep_lines=False, line=LINE_BODY, rule='exact', before=0, after=0, style=None):
+         keep_lines=False, line=LINE_BODY, rule='exact', before=0, after=0, style=None, spacing=0):
     p = el('p')
     pp = sub(p, 'pPr')
     if style:
@@ -154,7 +157,7 @@ def para(text='', align='both', indent=INDENT_BODY, size=BODY_SIZE, bold=False, 
     if indent is not None:
         sub(pp, 'ind', firstLine=indent)
     sub(pp, 'jc', val=align)
-    for r in inline_runs(text, size=size, bold=bold):
+    for r in inline_runs(text, size=size, bold=bold, spacing=spacing):
         p.append(r)
     return p
 
@@ -199,6 +202,7 @@ def auto_widths(rows, ncol, total):
 # 各表一律排满版心宽、左右对齐；正文表格不小于五号，行距固定 14 磅；外框 1.5 磅、内线 0.5 磅；
 # 单元格留白统一，行高不小于 0.8 cm；短文字列不出现末行只剩一个字。
 TABLE_FULL_WIDTH = {'portrait': PORTRAIT_TEXT_WIDTH, 'landscape': 16838 - 2 * 1440}  # 横向页边距各 1440
+PRE_LAYOUT = doctype.layout(doctype.PRE)   # 版式参数按报告类型取（doctype.LAYOUT）；不传的按预评价
 TABLE_MIN_SIZE = 21
 TABLE_MAR = [40, 40, 100, 100]   # 上、下、左、右（twip）
 TABLE_ROW_MIN = 454
@@ -278,7 +282,7 @@ def note_paras(cell):
     return out or ['']
 
 
-def make_table(b, orient, notes=(), keep_last=False):
+def make_table(b, orient, notes=(), keep_last=False, lay=PRE_LAYOUT):
     """notes：表后紧跟的“注：…”段，排成表格最后一行（整行合并、两端对齐、悬挂缩进“注：”两字），与上一行同页。
     表注放进表格（2026-10-27 用户批注）：注不会和表分到两页，也不再需要“表末行—间隔段—注”的同页链。
     keep_last：项目信息写“表注：表后”时注仍是表后段落，末行与下段同页，注不单独落到下一页。"""
@@ -288,7 +292,7 @@ def make_table(b, orient, notes=(), keep_last=False):
     nb = len(rows)  # 表末注行之前的行数
     while nb > header and is_note_row(rows[nb - 1]):
         nb -= 1
-    page_w = TABLE_FULL_WIDTH['landscape' if orient == 'landscape' else 'portrait']
+    page_w = lay['横向表格宽'] if orient == 'landscape' else lay['纵向版心宽']
     total = int(attrs['宽度']) if str(attrs.get('宽度', '')).isdigit() else page_w
     if attrs.get('列宽'):
         try:
@@ -466,12 +470,12 @@ def parse_pt(v):
     return int(round(float(m.group(1)) * 20))
 
 
-def make_image(pkg, b, root, orient, docpr_id):
+def make_image(pkg, b, root, orient, docpr_id, lay=PRE_LAYOUT):
     path = (root / b['path']).resolve()
     if not path.exists():
         raise BuildError('%s 图片文件不存在：%s' % (b['src'], b['path']))
     wcm, px_w, px_h = image_size(path)
-    page_cm = (LANDSCAPE_TEXT_WIDTH if orient == 'landscape' else PORTRAIT_TEXT_WIDTH) / 567.0
+    page_cm = (lay['横向图宽'] if orient == 'landscape' else lay['纵向版心宽']) / 567.0
     attrs = b.get('attrs', {})
     if '宽' in attrs:
         w2 = parse_len(attrs['宽'])
@@ -554,7 +558,7 @@ def find_para(body, marker):
 PEOPLE_WIDTHS = [1300, 1100, 1600, 1500, 1500, 1300]   # 人员表各列宽（twip），合计＝纵向版心宽
 
 
-def fit_people_table(tbl):
+def fit_people_table(tbl, width=PORTRAIT_TEXT_WIDTH):
     """人员签字表：模板里是浮动表、列宽合计 8513，比版心宽约 11 磅（左伸出约 4.5 磅、右约 6.4 磅），
     “职称”“化工新材料”末行只剩一个字（2026-10-28 晋钢200MW 排版审查）。改成嵌入式、排满版心宽、表级居中
     （与正文表格同一做法，Word、WPS 都按居中排）；列宽按“类别 5 字、姓名 4 字、职称和专业每行 6 字”定；
@@ -569,14 +573,17 @@ def fit_people_table(tbl):
     ws = list(PEOPLE_WIDTHS)
     if len(cols) != len(ws):   # 别的机构模板列数不同：按原比例缩放到版心宽
         s = sum(int(c.get(W + 'w')) for c in cols)
-        ws = [int(PORTRAIT_TEXT_WIDTH * int(c.get(W + 'w')) / s) for c in cols]
-        ws[-1] += PORTRAIT_TEXT_WIDTH - sum(ws)
+        ws = [int(width * int(c.get(W + 'w')) / s) for c in cols]
+        ws[-1] += width - sum(ws)
+    elif width != sum(ws):     # 版心更宽（设计专篇 9184）：各列按比例放宽
+        ws = [int(width * w_ / sum(PEOPLE_WIDTHS)) for w_ in PEOPLE_WIDTHS]
+        ws[-1] += width - sum(ws)
     for c, w_ in zip(cols, ws):
         c.set(W + 'w', str(w_))
     tw = tp.find(W + 'tblW')
     if tw is None:
         tw = sub(tp, 'tblW')
-    tw.set(W + 'w', str(PORTRAIT_TEXT_WIDTH))
+    tw.set(W + 'w', str(width))
     tw.set(W + 'type', 'dxa')
     for x in tp.findall(W + 'jc'):
         tp.remove(x)
@@ -672,14 +679,19 @@ def toc_field(entries):
     last.addnext(q)
 
 
-def info_values(info):
+def info_values(info, t=None):
+    """模板占位符的值。t 是报告类型（不给按项目信息的“报告类型”）：页眉第二行取 doctype 配置。
+    设计专篇封面的“资质证书编号”没填时写【待填】（WS/T 882 附件1 封面要有设计单位资质证书编号）。"""
+    t = t or doctype.type_of_info(info)
     v = {k: str(x) for k, x in info.items() if not isinstance(x, (list, dict))}
     v.setdefault('页眉第一行', info.get('页眉名称') or info.get('项目名称', ''))
-    v.setdefault('页眉第二行', '职业病危害预评价报告')
+    v.setdefault('页眉第二行', doctype.conf(t)['页眉第二行'])
+    if t != doctype.PRE:
+        v.setdefault('资质证书编号', '【待填】')
     return v
 
 
-def fill_front(body, info, headings, marks=None):
+def fill_front(body, info, headings, marks=None, lay=PRE_LAYOUT):
     p = find_para(body, '{{封面名称}}')
     names = info.get('封面名称') or [info.get('项目名称', '')]
     if isinstance(names, str):
@@ -710,7 +722,7 @@ def fill_front(body, info, headings, marks=None):
             proto.addprevious(q)
         ptbl = proto.getparent()
         ptbl.remove(proto)
-        fit_people_table(ptbl)
+        fit_people_table(ptbl, lay['纵向版心宽'])
     # 目录：Word 目录域（2026-10-30 用户：目录页码要能自动更新；原来是程序回填的纯文字，Word／WPS 里更新不了）
     protos = {k: find_para(body, '{{目录%d}}' % k) for k in (1, 2, 3)}
     marks = marks or toc_marks(headings)
@@ -727,9 +739,14 @@ def fill_front(body, info, headings, marks=None):
         q.getparent().remove(q)
     if entries:
         toc_field(entries)
-    # 附件清单
+    # 附件清单（设计专篇模板没有：附件单独成册，WS/T 882 第8.1.3条）
     atts = info.get('附件', [])
     ph, ht = find_para(body, '{{附件名称}}'), find_para(body, '{{附件标题}}')
+    if ph is None or ht is None:
+        for q in (ph, ht):
+            if q is not None:
+                q.getparent().remove(q)
+        return
     for k, a in enumerate(atts, 1):
         q = copy.deepcopy(ph)
         name = a.get('名称', '') if isinstance(a, dict) else str(a)
@@ -742,8 +759,135 @@ def fill_front(body, info, headings, marks=None):
         ht.getparent().remove(ht)
 
 
+# ---------------------------------------------------------------- 公式块（设计专篇计算书，规格 2.2）
+FORMULA_COLS = (1500, 5300, 1500)     # 左空格｜公式｜编号，按版心宽等比切
+
+
+def formula_widths(total):
+    w = [int(round(total * x / sum(FORMULA_COLS))) for x in FORMULA_COLS]
+    w[1] += total - sum(w)
+    return w
+
+
+def _omml(latex, src, what='公式'):
+    try:
+        return omml.to_omml(latex, size=BODY_SIZE, ea_font=FONT_EA)
+    except omml.LatexError as e:
+        raise BuildError('%s %s转换失败：%s' % (src, what, e))
+
+
+def _math_cell_para(align, keep_next=True):
+    p = el('p')
+    pp = sub(p, 'pPr')
+    if keep_next:
+        sub(pp, 'keepNext')
+    sub(pp, 'spacing', before=60, after=60, line=240, lineRule='auto')   # 自动行距：固定行距会削掉分式
+    sub(pp, 'ind', firstLine=0)
+    sub(pp, 'jc', val=align)
+    order_children(pp, PPR_ORDER)
+    return p
+
+
+def formula_table(b, om, total):
+    """编号的公式：三列无框固定布局表，中格居中放公式，右格右对齐放（编号），左格空。"""
+    widths = formula_widths(total)
+    t = el('tbl')
+    tp = sub(t, 'tblPr')
+    sub(tp, 'tblW', w=total, type='dxa')
+    sub(tp, 'jc', val='center')
+    bd = sub(tp, 'tblBorders')
+    for side in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
+        sub(bd, side, val='nil')
+    sub(tp, 'tblLayout', type='fixed')
+    mar = sub(tp, 'tblCellMar')
+    for side in ('top', 'left', 'bottom', 'right'):
+        sub(mar, side, w=0, type='dxa')
+    grid = sub(t, 'tblGrid')
+    for w in widths:
+        sub(grid, 'gridCol', w=w)
+    tr = sub(t, 'tr')
+    sub(sub(tr, 'trPr'), 'cantSplit')
+    paras = []
+    for w, align in zip(widths, ('left', 'center', 'right')):
+        tc = sub(tr, 'tc')
+        tcp = sub(tc, 'tcPr')
+        sub(tcp, 'tcW', w=w, type='dxa')
+        sub(tcp, 'noWrap')
+        sub(tcp, 'vAlign', val='center')
+        order_children(tcp, TCPR_ORDER)
+        p = _math_cell_para(align)
+        tc.append(p)
+        paras.append(p)
+    mp = omml.math_para(om)
+    paras[1].append(mp)
+    paras[2].append(run('（%s）' % b['no'], size=BODY_SIZE))
+    return t
+
+
+def formula_plain(om):
+    """不编号的公式：单独一段居中。"""
+    p = _math_cell_para('center', keep_next=False)
+    p.append(omml.math_para(om))
+    return p
+
+
+def formula_where(b, lay):
+    """“式中：”一段，各符号行一段（首行不缩进、悬挂对齐）；最后一段以外都与下段同页。"""
+    out = []
+    items = b.get('vars', [])
+    sp = lay['字距']
+
+    def where_para(runs, keep, hang):
+        p = el('p')
+        pp = sub(p, 'pPr')
+        if keep:
+            sub(pp, 'keepNext')
+        sub(pp, 'spacing', before=0, after=0, line=lay['行距'], lineRule='exact')
+        if hang:
+            sub(pp, 'ind', left=hang, hanging=hang)
+        else:
+            sub(pp, 'ind', firstLine=0)
+        sub(pp, 'jc', val='both')
+        order_children(pp, PPR_ORDER)
+        for r in runs:
+            p.append(r)
+        return p
+
+    out.append(where_para([run('式中：', size=BODY_SIZE, spacing=sp)], bool(items), 0))
+    for k, v in enumerate(items):
+        end = '。' if k == len(items) - 1 else '；'
+        runs = [_omml(v['sym'], v['src'], '式中符号'), run('——', size=BODY_SIZE, spacing=sp)]
+        text = v['text'].rstrip('。；;') + end
+        for is_math, seg in split_inline(text):
+            if is_math:
+                runs.append(_omml(seg, v['src'], '式中行内公式'))
+            elif seg:
+                runs.append(run(nobreak_spaces(seg), size=BODY_SIZE, spacing=sp))
+        out.append(where_para(runs, k < len(items) - 1, lay['缩进']))
+    return out
+
+
+def make_formula(b, orient, lay):
+    """公式块 → [表或段, 式中各段…]。"""
+    if b.get('latex') is None:
+        raise BuildError('%s %s' % (b['src'], b.get('bad') or '公式指令后面应紧接单独一行 $$…$$'))
+    total = lay['横向表格宽'] if orient == 'landscape' else lay['纵向版心宽']
+    om = _omml(b['latex'], b.get('latex_src', b['src']))
+    out = [formula_table(b, om, total) if b.get('no') else formula_plain(om)]
+    if b.get('where'):
+        out += formula_where(b, lay)
+    return out
+
+
+def template_of(t):
+    """报告类型的 Word 模板（doctype 配置）；预评价就是 TEMPLATE。"""
+    return TEMPLATE if t == doctype.PRE else doctype.path_of(t, '模板')
+
+
 def build(project, out_path, template=None):
-    pkg = Package(template or TEMPLATE)
+    rtype = doctype.type_of_info(project.info)
+    lay = doctype.layout(rtype)
+    pkg = Package(template or template_of(rtype))
     body = pkg.xml('word/document.xml').find(W + 'body')
     sid = style_ids(pkg)
     hs = [sid.get('heading %d' % k) for k in (1, 2, 3, 4)]
@@ -751,9 +895,9 @@ def build(project, out_path, template=None):
     abstract = list_abstract(pkg, list_style) if list_style else None
     blocks = project.blocks
     headings = [(b['level'], b['text'].replace('**', '')) for b in blocks if b['t'] == 'h']
-    vals = info_values(project.info)
+    vals = info_values(project.info, rtype)
     marks = toc_marks(headings)
-    fill_front(body, project.info, headings, marks)
+    fill_front(body, project.info, headings, marks, lay)
     hk = iter(range(len(headings)))
     p_body, p_land = find_para(body, '{{正文}}'), find_para(body, '{{横向分节}}')
     proto = {'landscape': copy.deepcopy(p_land.find(W + 'pPr/' + W + 'sectPr')),
@@ -764,7 +908,9 @@ def build(project, out_path, template=None):
             del pn.attrib[W + 'start']
     p_land.getparent().remove(p_land)
     out, spacers = [], set()
-    st = {'orient': 'portrait', 'first': True, 'pb': False, 'list': None, 'last_list': None, 'docpr': 1000}
+    st = {'orient': 'portrait', 'first': True, 'pb': False, 'list': None, 'last_list': None, 'docpr': 1000,
+          'since': -1}            # since：上次分节后 out 的长度
+    skip_empty = rtype != doctype.PRE
     # 表后紧跟的“注：…”段排成表格最后一行；项目信息.md 写“表注：表后”时仍排在表后（导入的旧稿按原样）
     notes_in_table = str(project.info.get('表注', '表内')).strip() != '表后'
 
@@ -796,7 +942,8 @@ def build(project, out_path, template=None):
         # 表后的“注”段（带 keepLines）不兼作分节段：Word 对带分节符的段不执行“与上表同页”
         if last is not None and last.tag == W + 'p' and id(last) not in spacers \
                 and last.find(W + 'pPr/' + W + 'sectPr') is None \
-                and last.find(W + 'pPr/' + W + 'keepLines') is None:
+                and last.find(W + 'pPr/' + W + 'keepLines') is None \
+                and last.find('.//{%s}oMathPara' % omml.M_NS) is None:   # 含公式的段挂分节符，LibreOffice 会整段不画
             pp = last.find(W + 'pPr')
             pp.append(sp)
             order_children(pp, PPR_ORDER)
@@ -819,8 +966,11 @@ def build(project, out_path, template=None):
             st['list'] = None
         if t == 'sect':
             if b['orient'] != st['orient']:
-                if out:
+                # 设计专篇：上一节刚结束、这一节还没内容又换回来（“纵向”后紧跟“横向”，常在两个文件交界处），
+                # 不出这个空节，免得多一张空白页。预评价照旧。
+                if out and not (skip_empty and len(out) == st['since']):
                     close_section()
+                    st['since'] = len(out)
                 st['orient'] = b['orient']
             st['pb'] = False
             continue
@@ -829,7 +979,7 @@ def build(project, out_path, template=None):
             continue
         if t == 'h':
             p = para(b['text'].replace('**', ''), align='left', indent=0, bold=True, keep_next=True,
-                     keep_lines=True, style=hs[b['level'] - 1])
+                     keep_lines=True, style=hs[b['level'] - 1], line=lay['行距'])
             if b['level'] == 1:
                 set_page_break(p)
             k = next(hk)
@@ -841,13 +991,14 @@ def build(project, out_path, template=None):
             a = b.get('attrs', {})
             align = 'center' if a.get('居中') else ('right' if a.get('右对齐') else ('left' if a.get('左对齐') else 'both'))
             size = parse_size(a.get('字号'), BODY_SIZE)
-            indent = 0 if (a.get('不缩进') or a.get('居中')) else INDENT_BODY * size // BODY_SIZE
+            indent = 0 if (a.get('不缩进') or a.get('居中')) else lay['缩进'] * size // BODY_SIZE
             kn = (all_bold(b['text']) and len(b['text']) <= 60) or bool(a.get('与下段同页'))
             emit(para(nobreak_spaces(b['text']), align=align, indent=indent, keep_next=kn,
                       keep_lines=i > 0 and blocks[i - 1]['t'] == 'table' and is_note(b),
-                      size=size, line=LINE_BODY * size // BODY_SIZE))
+                      size=size, line=lay['行距'] * size // BODY_SIZE,
+                      spacing=lay['字距'] if size == BODY_SIZE else 0))
         elif t == 'blank':
-            emit(para(''))
+            emit(para('', line=lay['行距']))
         elif t == 'li':
             n = b['num']
             if st['list'] is not None and n == st['list'][1] + 1:
@@ -863,9 +1014,9 @@ def build(project, out_path, template=None):
             np_ = sub(pp, 'numPr')
             sub(np_, 'ilvl', val=0)
             sub(np_, 'numId', val=nid)
-            sub(pp, 'spacing', before=0, after=0, line=LINE_BODY, lineRule='exact')
+            sub(pp, 'spacing', before=0, after=0, line=lay['行距'], lineRule='exact')
             sub(pp, 'jc', val='both')
-            for r in inline_runs(nobreak_spaces(b['text'])):
+            for r in inline_runs(nobreak_spaces(b['text']), spacing=lay['字距']):
                 p.append(r)
             emit(p)
         elif t == 'caption':
@@ -873,7 +1024,10 @@ def build(project, out_path, template=None):
                       keep_next=b['kind'] == '表', keep_lines=True, line=360, before=60, after=60))
         elif t == 'img':
             st['docpr'] += 1
-            emit(make_image(pkg, b, project.root, st['orient'], st['docpr']))
+            emit(make_image(pkg, b, project.root, st['orient'], st['docpr'], lay))
+        elif t == 'formula':
+            for e in make_formula(b, st['orient'], lay):
+                emit(e)
         elif t == 'table':
             notes, j = [], i + 1
             while notes_in_table and j < len(blocks) and is_note(blocks[j]):
@@ -882,7 +1036,7 @@ def build(project, out_path, template=None):
                 j += 1
             nxt = blocks[j] if j < len(blocks) else None
             note = is_note(nxt)  # 只在“表注：表后”时还会遇到表后的注段
-            emit(make_table(b, st['orient'], notes=notes, keep_last=note))
+            emit(make_table(b, st['orient'], notes=notes, keep_last=note, lay=lay))
             spacer = str(b.get('attrs', {}).get('表后空行', '是')) not in ('否', '0', '无')
             if (spacer or note) and nxt is not None and nxt['t'] not in ('sect', 'pagebreak'):
                 # 表后接“注”时，间隔段带 keepNext：表末行→间隔段→注 连成一串（Word 对表末行只看下一段首行）；
@@ -898,7 +1052,7 @@ def build(project, out_path, template=None):
     if last is None or last.tag != W + 'p' or id(last) in spacers:
         if last is not None and id(last) in spacers:
             out.pop()
-        last = para('')
+        last = para('', line=lay['行距'])
         out.append(last)
     sub(last, 'bookmarkStart', id=9001, name='BodyEnd')
     sub(last, 'bookmarkEnd', id=9001)
@@ -923,10 +1077,11 @@ def build(project, out_path, template=None):
     if 'docProps/core.xml' in pkg.parts:
         core = pkg.xml('docProps/core.xml')
         dc = '{http://purl.org/dc/elements/1.1/}'
-        t = core.find(dc + 'title')
-        if t is None:
-            t = E.SubElement(core, dc + 'title')
-        t.text = vals.get('项目名称', '') + '职业病危害预评价报告'
+        t_ = core.find(dc + 'title')
+        if t_ is None:
+            t_ = E.SubElement(core, dc + 'title')
+        conf = doctype.conf(rtype)
+        t_.text = vals.get('项目名称', '') + conf['名称后缀']
         c = core.find(dc + 'creator')
         if c is not None:
             c.text = vals.get('评价单位', '')
@@ -934,9 +1089,12 @@ def build(project, out_path, template=None):
         cp = '{http://schemas.openxmlformats.org/package/2006/metadata/core-properties}'
         dcterms = '{http://purl.org/dc/terms/}'
         now = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-        for tag, text in ((cp + 'keywords', '职业病危害预评价;职业病防护设施三同时'),
-                          (cp + 'lastModifiedBy', vals.get('评价单位', '')),
-                          (dcterms + 'created', now), (dcterms + 'modified', now)):
+        props = [(cp + 'keywords', conf['关键词']), (cp + 'lastModifiedBy', vals.get('评价单位', '')),
+                 (dcterms + 'created', now), (dcterms + 'modified', now)]
+        if rtype != doctype.PRE:   # 预评价模板的 subject（“建设项目职业病危害预评价”）照旧；专篇写本卷名称和报告编号
+            no = vals.get('报告编号', '')
+            props.append((dc + 'subject', ('建设项目%s %s' % (conf['名称后缀'], '' if '待' in no else no)).strip()))
+        for tag, text in props:
             node = core.find(tag)
             if node is None:
                 node = E.SubElement(core, tag)

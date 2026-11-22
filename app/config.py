@@ -29,6 +29,7 @@ def _data_dir():
 DATA = _data_dir()
 CONFIG = DATA / 'config.json'
 DEFAULTS = {
+    '协议': 'anthropic',  # anthropic＝Anthropic Messages；openai＝OpenAI Chat Completions（DeepSeek、CodeBuddy 等）
     '模型': 'claude-opus-5-5',
     '并发': 4,            # 同时调用模型的个数
     '缓存': False,        # 提示缓存；本机用的中转读不到缓存，开了反而多算写入费
@@ -78,10 +79,16 @@ def _claude_settings():
 
 
 def credentials(cfg=None):
-    """返回 (地址, 密钥, 来源)。顺序：本程序设置 → 环境变量 → 本机 Claude Code 的 settings.json。"""
+    """返回 (地址, 密钥, 来源)。顺序：本程序设置 → 环境变量 → 本机 Claude Code 的 settings.json。
+    OpenAI 兼容协议也认 OPENAI_API_KEY / OPENAI_BASE_URL，没设再用 ANTHROPIC_* 那套。"""
     cfg = cfg or load()
     if cfg.get('密钥'):
         return cfg.get('地址') or None, cfg['密钥'], '本程序设置'
+    openai = cfg.get('协议') == 'openai'
+    if openai:
+        key = os.environ.get('OPENAI_API_KEY')
+        if key:
+            return cfg.get('地址') or os.environ.get('OPENAI_BASE_URL'), key, '环境变量'
     key = os.environ.get('ANTHROPIC_AUTH_TOKEN') or os.environ.get('ANTHROPIC_API_KEY')
     if key:
         return cfg.get('地址') or os.environ.get('ANTHROPIC_BASE_URL'), key, '环境变量'

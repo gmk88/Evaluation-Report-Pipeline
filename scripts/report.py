@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-"""职业病危害预评价报告：新建项目、导入旧报告、检查、生成 Word／PDF（目录页码自动回填）、自测。
+"""职业病危害预评价报告、职业病防护设施设计专篇：新建项目、导入旧报告、检查、生成 Word／PDF（目录页码自动回填）、自测。
+
+两种报告类型（项目信息.md 的“- 报告类型：”，没写的按预评价）：
+  预评价     GBZ/T 196—2025，正文/01～11章，一卷
+  设计专篇   WS/T 882—2013，主报告 正文/01～05章＋资料性附件册（项目文件夹/附件册/，正文“# 附件1 ……”起）两卷；
+             build、wps、出稿 对主报告文件夹运行时两卷都出，各自核对目录页码；只出附件册就对 附件册/ 运行
 
 用法（python3 scripts/report.py 命令 …）：
-  new    项目文件夹 [--名称 项目名称]   新建项目：复制骨架（项目信息.md、检查规则.md、正文/01～11章、资料/、图/）
+  new    项目文件夹 [--名称 项目名称] [--类型 设计专篇]
+                                        新建项目：复制骨架（项目信息.md、检查规则.md、正文/、资料/、图/；设计专篇连 附件册/）
   import 旧报告.docx 项目文件夹         把已有报告转成项目文件夹（当样板改编，或核对旧稿）
   check  项目文件夹                     只检查，结果写到 项目文件夹/输出/校验报告.md
   build  项目文件夹 [--不出PDF]         检查 → 生成 Word → 转 PDF（LibreOffice）→ 回填目录页码和“共N页” → 复核
@@ -16,7 +22,7 @@
                                         结果写到 新稿项目文件夹/输出/篇幅核对.md；原稿先用 import 转成项目文件夹
   test   [--快速]                       自测：检查规则、骨架出稿、马沟回归（--快速 不渲染 PDF）
 流水线用（结果都很短，给子助手和主对话看）：
-  new 项目文件夹 --方法 风险评估法        用风险评估法骨架建项目（默认类比法）
+  new 项目文件夹 --方法 风险评估法        用风险评估法骨架建预评价项目（默认类比法；设计专篇不分方法）
   check 项目文件夹 --json [--章 02,05]   按文件分组列错误，可只看某几章；不写校验报告.md
   资料 项目文件夹 [文件或文件夹…]        可研等资料转成文字、分块，放 资料/文本/（附 索引.json）
   出稿 项目文件夹 [--只核对]             检查为 0 才出：build → WPS 两轮导出核对 → 发布到 输出/（多项目排队）
@@ -33,7 +39,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.append(str(Path(__file__).resolve().parent / '_vendor'))   # 自带的 fontTools；本机装了的优先用装好的
-from pe import mdparse, docxgen, checks, render, finalize, pipeline  # noqa: E402
+from pe import mdparse, docxgen, checks, render, finalize, pipeline, doctype  # noqa: E402
 from pe.model import Project  # noqa: E402
 
 SKILL = Path(__file__).resolve().parents[1]
@@ -51,7 +57,8 @@ def safe(s):
 
 
 def out_stem(info):
-    stem = (safe(info.get('项目名称')) or '项目') + '职业病危害预评价报告'
+    """出稿文件名：项目名称＋类型名称后缀（预评价“职业病危害预评价报告”、专篇“职业病防护设施设计专篇”）＋_编号。"""
+    stem = (safe(info.get('项目名称')) or '项目') + doctype.conf(doctype.type_of_info(info))['名称后缀']
     no = info.get('报告编号', '')
     if no and '待' not in no:
         stem += '_' + safe(no)
@@ -95,9 +102,15 @@ def cmd_new(a):
     dst = Path(a.folder)
     if dst.exists() and any(dst.iterdir()):
         fail('文件夹已存在且不是空的：%s' % dst)
-    if a.方法 not in SKELETONS:
+    kind = getattr(a, '类型', '') or doctype.PRE
+    if kind not in (doctype.PRE, doctype.DESIGN):
+        fail('--类型 只能是：%s、%s' % (doctype.PRE, doctype.DESIGN))
+    if kind == doctype.PRE and a.方法 not in SKELETONS:
         fail('--方法 只能是：%s' % '、'.join(SKELETONS))
-    shutil.copytree(SKELETONS[a.方法], dst, dirs_exist_ok=True)
+    src = SKELETONS[a.方法] if kind == doctype.PRE else doctype.skeleton(kind)
+    if not src.is_dir():
+        fail('没有%s骨架：%s' % (kind, src))
+    shutil.copytree(src, dst, dirs_exist_ok=True)   # 设计专篇的骨架里带 附件册/
     if a.名称:
         p = dst / '项目信息.md'
         s = p.read_text(encoding='utf-8').replace('- 项目名称：【待填】', '- 项目名称：' + a.名称, 1)
@@ -132,8 +145,14 @@ def cmd_check(a):
 
 
 def cmd_build(a):
+    """设计专篇主报告：主报告出完接着出附件册（两卷各自检查、生成、核对目录）。退出码取两卷里大的。"""
+    rcs = [build_one(v, a) for v in doctype.volumes(a.folder)]
+    return max(rcs)
+
+
+def build_one(folder, a):
     t = time.time()
-    pj = load(a.folder)
+    pj = load(folder)
     issues = checks.run(pj)
     out = pj.root / '输出'
     docx = out / (out_stem(pj.info) + '.docx')
@@ -240,14 +259,28 @@ def cmd_finalize(a):
 
 
 def cmd_wps(a):
-    """WPS 命令行出 PDF：两轮导出、回填、核对，加 --发布 才放进 输出/。"""
+    """WPS 命令行出 PDF：两轮导出、回填、核对，加 --发布 才放进 输出/。设计专篇主报告接着导出附件册
+    （附件册的核对文件夹放在 --核对目录 下的 附件册/）；--docx 只用于主报告。主报告没通过就不导附件册。"""
+    vols = doctype.volumes(a.folder)
+    rc = 0
+    for i, v in enumerate(vols):
+        if i and rc == 2:
+            break
+        if i:
+            print('—— 附件册 ——')
+        out = (str(Path(a.核对目录) / doctype.ANNEX_DIR) if a.核对目录 else '') if i else a.核对目录
+        rc = max(rc, wps_one(v, a, a.docx if not i else '', out))
+    return rc
+
+
+def wps_one(folder, a, docx_arg, check_dir):
     from pe import wps
     t = time.time()
-    pj = load(a.folder)
-    docx = Path(a.docx) if a.docx else pj.root / '输出' / (out_stem(pj.info) + '.docx')
+    pj = load(folder)
+    docx = Path(docx_arg) if docx_arg else pj.root / '输出' / (out_stem(pj.info) + '.docx')
     headings = [(b['level'], b['text'].replace('**', '')) for b in pj.blocks if b['t'] == 'h']
     try:
-        res = wps.run(pj.root, docx, headings, out=a.核对目录 or None, publish=a.发布)
+        res = wps.run(pj.root, docx, headings, out=check_dir or None, publish=a.发布)
     except (wps.WpsError, ValueError, OSError) as e:
         print('未通过：%s' % e)
         return 2
@@ -301,6 +334,7 @@ def main():
     p.add_argument('folder')
     p.add_argument('--名称', default='')
     p.add_argument('--方法', default='类比法')
+    p.add_argument('--类型', default=doctype.PRE, help='预评价（默认）或 设计专篇')
     p = sp.add_parser('import', help='导入已有报告 DOCX')
     p.add_argument('docx')
     p.add_argument('folder')

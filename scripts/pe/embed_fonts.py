@@ -8,6 +8,7 @@ Times New Roman 和 Songti SC。只有嵌进 DOCX 的字体它会照用。这里
 """
 
 import io
+import re
 import sys
 import uuid
 import zipfile
@@ -27,13 +28,29 @@ def _find(filename, *dirs):
 USER_FONTS = Path.home() / 'Library/Fonts'
 MAC_FONTS = Path('/Library/Fonts')
 SUPPLEMENTAL = Path('/System/Library/Fonts/Supplemental')
+WORD_FONTS = Path('/Applications/Microsoft Word.app/Contents/Resources/DFonts')   # Word 自带，fsType=8 允许嵌入
 # 字体名（与 DOCX 中 w:rFonts 一致）→ 常规、粗体字体文件。与 Word 导出的 PDF 用字一致。
 FONTS = {
     '仿宋': (_find('FangSongCN-Regular.ttf', USER_FONTS, MAC_FONTS), None),
     '宋体': (_find('SimSunCN-Regular.ttf', USER_FONTS, MAC_FONTS), None),
     'Times New Roman': (_find('Times New Roman.ttf', SUPPLEMENTAL, MAC_FONTS),
                         _find('Times New Roman Bold.ttf', SUPPLEMENTAL, MAC_FONTS)),
+    # 设计专篇封面、封二（WS/T 882—2013 附录D 附件1、附件2）：标题华文中宋、报告编号黑体
+    '华文中宋': (_find('STZHONGS.ttf', USER_FONTS, MAC_FONTS, WORD_FONTS), None),
+    '黑体': (_find('SimHei.ttf', USER_FONTS, MAC_FONTS, WORD_FONTS), None),
+    # 设计专篇的公式（OMML）用 Cambria Math；Word 的 Cambria.ttc 里第 2 号字体（fsType=8 允许嵌入）
+    'Cambria Math': (_find('Cambria.ttc', USER_FONTS, MAC_FONTS, WORD_FONTS), None),
 }
+# 字体文件是 TTC 合集时，用第几号字体（从 0 数）
+TTC_NUMBER = {'Cambria Math': 1}
+# 只在文档里真用到时才嵌入、才要求的字体（预评价不用，不给它的渲染副本多嵌两款字）
+OPTIONAL = ('华文中宋', '黑体', 'Cambria Math')
+# 找不到字体文件也不报错、只是不嵌的字体（公式字体：没装 Word 的电脑上出稿仍可进行，公式字体由 WPS 自行替换）
+SOFT = ('Cambria Math',)
+# 渲染副本里要改名的字体：WPS 命令行见到“黑体”这个名字就换成别的字，不用嵌进去的黑体（2026-11-04 实测
+# 报告编号出成 SimSunCN）；渲染副本里把 w:rFonts 和嵌入字体的名字都改成 SimHeiCN，它就照用。交稿 DOCX 不改名。
+RENDER_ALIAS = {'黑体': 'SimHeiCN'}
+RE_ALIAS = re.compile(r'word/(document|header\d+|footer\d+|styles|numbering|fontTable)\.xml$')
 W_NS = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'
 R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 PR_NS = 'http://schemas.openxmlformats.org/package/2006/relationships'
@@ -59,11 +76,24 @@ def _subset_module():
     return subset
 
 
-def font_files():
-    missing = [str(p) for pair in FONTS.values() for p in pair if p and not p.is_file()]
+def font_files(used=None):
+    """要嵌入的字体。used 是文档 w:rFonts 里用到的字体名，OPTIONAL 里的字体只在用到时嵌入；不给就全部。"""
+    fonts = {k: v for k, v in FONTS.items() if used is None or k not in OPTIONAL or k in used}
+    fonts = {k: v for k, v in fonts.items() if k not in SOFT or all(p is None or p.is_file() for p in v)}
+    missing = [str(p) for pair in fonts.values() for p in pair if p and not p.is_file()]
     if missing:
         raise RuntimeError('缺少要嵌入的字体文件：' + '、'.join(missing))
-    return FONTS
+    return fonts
+
+
+def used_fonts(parts):
+    """DOCX 正文、页眉页脚的 w:rFonts 里写到的东亚字体名。"""
+    names = set()
+    for name, data in parts.items():
+        if re.match(r'word/(document|header\d+|footer\d+)\.xml$', name):
+            for el in E.fromstring(data).iter(W + 'rFonts'):
+                names.update(v for k, v in el.attrib.items() if k in (W + 'eastAsia', W + 'ascii', W + 'hAnsi'))
+    return names
 
 
 def used_chars(parts):
@@ -77,7 +107,37 @@ def used_chars(parts):
     return {c for c in chars if ord(c) >= 0x20}
 
 
-def subset_font(path, chars):
+def _rename_font(data, alias):
+    """裁好的字体改族名、全名、PostScript 名（alias、alias、alias-Regular），给 RENDER_ALIAS 用。"""
+    _subset_module()                    # 保证 fontTools 能导入（本机没装就用 _vendor/）
+    from fontTools.ttLib import TTFont
+    font = TTFont(io.BytesIO(data))
+    for rec in font['name'].names:
+        if rec.nameID in (1, 4, 16):
+            rec.string = alias
+        elif rec.nameID == 6:
+            rec.string = alias + '-Regular'
+    out = io.BytesIO()
+    font.save(out)
+    return out.getvalue()
+
+
+def _alias_parts(parts):
+    """渲染副本里把 RENDER_ALIAS 的字体名换成别名（只改 rFonts 等属性值和 fontTable 的 w:name）。"""
+    for name in [n for n in parts if RE_ALIAS.match(n)]:
+        root = E.fromstring(parts[name])
+        hit = False
+        for el in root.iter(W + 'rFonts', W + 'font', W + 'altName'):
+            for k, v in el.attrib.items():
+                if k.startswith(W) and v in RENDER_ALIAS:
+                    el.set(k, RENDER_ALIAS[v])
+                    hit = True
+        if hit:
+            parts[name] = E.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
+
+
+def subset_font(path, chars, number=0):
+    """number：path 是 .ttc 合集时取第几号字体。"""
     subset = _subset_module()
     opt = subset.Options()
     opt.name_IDs = ['*']
@@ -87,7 +147,11 @@ def subset_font(path, chars):
     opt.notdef_outline = True
     opt.hinting = True
     opt.drop_tables += ['morx', 'feat', 'meta', 'mort', 'kerx', 'trak', 'DSIG']
-    font = subset.load_font(str(path), opt)
+    if number:   # TTC 合集里的第 number 号字体
+        from fontTools.ttLib import TTFont
+        font = TTFont(str(path), fontNumber=number, lazy=True)
+    else:
+        font = subset.load_font(str(path), opt)
     sub = subset.Subsetter(opt)
     sub.populate(unicodes=sorted(ord(c) for c in chars))
     sub.subset(font)
@@ -157,6 +221,20 @@ def _content_types(data):
     return E.tostring(root, xml_declaration=True, encoding='UTF-8', standalone=True)
 
 
+RE_MATH_VAR_RUN = re.compile(rb'<m:r>(<w:rPr><w:rFonts)(.*?)(</w:rPr>)(<m:t)', re.S)
+
+
+def _wps_math_italic(parts):
+    """渲染副本专用：WPS 命令行排 OMML 变量时把字母换成数学斜体字符（U+1D434…，不在基本平面），
+    嵌入的字体里有这些字形也显示成两个方框。把没有样式的变量 run 改成“普通文字＋斜体”（nor＋w:i），
+    字母不变、仍是 Cambria Math 斜体。交稿的 Word 不动（Word 自己会排数学斜体）。"""
+    for name in [n for n in parts if n.startswith('word/') and n.endswith('.xml')]:
+        if b'<m:oMath' in parts[name]:
+            parts[name] = RE_MATH_VAR_RUN.sub(
+                lambda m: b'<m:r><m:rPr><m:nor/></m:rPr><w:rPr><w:i/><w:iCs/><w:rFonts' + m.group(2) + m.group(3) + m.group(4),
+                parts[name])
+
+
 def render_copy(docx, out, cache=None):
     """把 docx 另存为嵌入字体的渲染副本 out，返回 [(字体名, 常规/粗体, 嵌入字节数)]。
     cache 传同一个 dict 时，第二轮直接用第一轮裁好的字体。"""
@@ -167,21 +245,28 @@ def render_copy(docx, out, cache=None):
         del parts[name]
     if 'chars' not in cache:
         cache['chars'] = used_chars(parts)
+    _wps_math_italic(parts)
+    used = used_fonts(parts)
+    if used & set(RENDER_ALIAS):
+        _alias_parts(parts)
     embeds, rels, report = {}, [], []
     n = 0
-    for name, pair in font_files().items():
+    for name, pair in font_files(used).items():
+        alias = RENDER_ALIAS.get(name)
         for kind, path in zip(('Regular', 'Bold'), pair):
             if path is None:
                 continue
-            if path not in cache:
-                cache[path] = subset_font(path, cache['chars'])
+            key = (path, alias)
+            if key not in cache:
+                data = subset_font(path, cache['chars'], TTC_NUMBER.get(name, 0))
+                cache[key] = _rename_font(data, alias) if alias else data
             n += 1
             guid = uuid.uuid4()
             rid, target = 'rIdEmbFont%d' % n, 'fonts/font%d.odttf' % n
-            parts['word/' + target] = obfuscate(cache[path], guid)
-            embeds.setdefault(name, []).append((kind, rid, guid))
+            parts['word/' + target] = obfuscate(cache[key], guid)
+            embeds.setdefault(alias or name, []).append((kind, rid, guid))
             rels.append((rid, target))
-            report.append((name, kind, len(cache[path])))
+            report.append((name, kind, len(cache[key])))
     parts['word/fontTable.xml'] = _font_table(parts['word/fontTable.xml'], embeds)
     parts[FONT_RELS] = _rels(parts.get(FONT_RELS), rels)
     parts['word/settings.xml'] = _settings(parts['word/settings.xml'])

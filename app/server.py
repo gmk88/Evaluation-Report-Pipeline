@@ -287,6 +287,58 @@ def _materials(raw, root, resume=False):
     return given
 
 
+def _info_date(pre):
+    """项目信息.md 的“报告日期”。"""
+    p = Path(pre) / '项目信息.md'
+    m = re.search(r'^- 报告日期：(.*)$', tools.read(p), re.M) if p.is_file() else None
+    return m.group(1).strip() if m else ''
+
+
+CN_NUM = {c: i for i, c in enumerate('〇一二三四五六七八九')}
+
+
+def _ymd(s):
+    """“2026年11月”“2026年11月5日”“二〇二六年十一月”→ (年, 月, 日)；认不出返回 None（日没写的按 0，同月不算早）。"""
+    s = str(s or '').replace('零', '〇')
+    if re.search(r'[〇一二三四五六七八九十]', s):
+        def cn(x):
+            if '十' in x:
+                a, _, b = x.partition('十')
+                return (CN_NUM.get(a, 1) if a else 1) * 10 + (CN_NUM.get(b, 0) if b else 0)
+            return int(''.join(str(CN_NUM[c]) for c in x)) if x and all(c in CN_NUM for c in x) else None
+        m = re.match(r'^\s*([〇一二三四五六七八九]{4})年([一二三四五六七八九十]{1,3})月(?:([一二三四五六七八九十]{1,3})日)?', s)
+        return (cn(m.group(1)), cn(m.group(2)), cn(m.group(3)) if m.group(3) else 0) if m else None
+    m = re.match(r'^\s*(\d{4})\s*[年\-./]\s*(\d{1,2})(?:\s*[月\-./]\s*(\d{1,2}))?', s)
+    return (int(m.group(1)), int(m.group(2)), int(m.group(3) or 0)) if m else None
+
+
+def _earlier(a, b):
+    """日期 a 早于 b（只比两边都写了的部分：一边没写日，就只比到月）；认不出的不算早。"""
+    x, y = _ymd(a), _ymd(b)
+    if not x or not y:
+        return False
+    n = 3 if x[2] and y[2] else 2
+    return x[:n] < y[:n]
+
+
+def _pre_project(raw, root, resume):
+    """设计专篇承接的预评价项目：要在项目登记里、类型是预评价、有 正文/。接着做时没给的，按专篇 流水线设置.json 记的。"""
+    if not clean_path(raw) and resume:
+        raw = tools.doctype.settings(root).get('预评价')
+    if not clean_path(raw):
+        raise ApiError(400, '设计专篇要选承接的预评价项目')
+    p = _abs(raw, '预评价项目文件夹')
+    if str(p) not in _registered_roots():
+        raise ApiError(400, '承接的预评价项目不在项目登记里：%s' % p)
+    if tools.report_type(p) != tools.doctype.PRE:
+        raise ApiError(400, '承接的项目不是预评价报告：%s' % p)
+    if not (p / '正文').is_dir():
+        raise ApiError(400, '承接的预评价项目里没有“正文”文件夹：%s' % p)
+    if _inside(p, root, True) or _inside(root, p, True):
+        raise ApiError(400, '设计专篇不能建在预评价项目文件夹里面，也不能包含它')
+    return str(p)
+
+
 def build_job(kind, P, project, resume=False):
     """照 cli._job() 组织 (标题, 参数, 项目)，同时校验页面填的东西。
     resume：接着做上次没做完的新报告（文件夹是上次建好的，不要求是空的；资料已拷进去的，原件挪走了也不要紧）。"""
@@ -301,11 +353,25 @@ def build_job(kind, P, project, resume=False):
                 raise ApiError(400, '这个位置已经有一个同名文件：%s' % root)
             if [x for x in root.iterdir() if x.name not in JUNK + (jobs.LOCK_NAME,) and not x.name.startswith('._')]:
                 raise ApiError(400, '这个文件夹里已经有东西了，新报告要用一个新的或空的文件夹：%s' % root)
-        method = _text(P.get('方法'), '方法')
-        if method not in ('类比法', '风险评估法'):
-            raise ApiError(400, '方法只能选“类比法”或“风险评估法”')
+        kind_t = _text(P.get('类型'), '类型', 40) or tools.doctype.PRE
+        if resume and (root / '项目信息.md').is_file():
+            kind_t = tools.report_type(root)           # 接着做：按上次建好的项目
+        if kind_t not in (tools.doctype.PRE, tools.doctype.DESIGN):
+            raise ApiError(400, '报告类型只能选“预评价”或“设计专篇”')
+        extra = {}
+        if kind_t == tools.doctype.DESIGN:
+            method = ''
+            extra = {'类型': kind_t, '预评价': _pre_project(P.get('预评价'), root, resume)}
+            when = _text(P.get('日期'), '日期', 200)
+            pre_when = _info_date(Path(extra['预评价']))
+            if _earlier(when, pre_when):
+                raise ApiError(400, '专篇日期（%s）早于承接的预评价报告日期（%s）：专篇在预评价之后编制（前不引后）' % (when, pre_when))
+        else:
+            method = _text(P.get('方法'), '方法')
+            if method not in ('类比法', '风险评估法'):
+                raise ApiError(400, '方法只能选“类比法”或“风险评估法”')
         given = _materials(P.get('资料'), root, resume)
-        params = {'文件夹': str(root), '方法': method, '资料': given,
+        params = {'文件夹': str(root), '方法': method, **extra, '资料': given,
                   **{k: _text(P.get(k), k, 200) for k in ('名称', '简称', '编号', '日期')},
                   '审稿': _bool(P.get('审稿'), True), '出稿': _bool(P.get('出稿'), True), '只写': _list(P.get('只写'), '只写')}
         if resume:
@@ -355,6 +421,8 @@ def build_job(kind, P, project, resume=False):
         return '补充资料', {'资料': given, '说明': _text(P.get('说明'), '说明', 500)}, str(root)
     if kind == '类比资料':
         root = _project_root(project or P.get('项目'))
+        if tools.is_design(root):
+            raise ApiError(400, _ap().DESIGN_NO)
         if not _ap()._ch3(root):
             raise ApiError(400, '这份报告没有“类比企业（项目）调查与分析”这一章（用的是风险评估法），类比资料用不上')
         given = _materials(P.get('资料'), root, resume)
@@ -421,6 +489,11 @@ def api_settings_get(q, body):
 def api_settings_post(q, body):
     """只改页面给了的项；密钥空着＝不改。"""
     ch = {}
+    if '协议' in body:
+        v = _text(body['协议'], '协议', 30)
+        if v not in ('anthropic', 'openai'):
+            raise ApiError(400, '协议只能是 anthropic 或 openai')
+        ch['协议'] = v
     if '地址' in body:
         v = _text(body['地址'], '地址', 500)
         if v and not re.match(r'^https?://\S+$', v):
@@ -608,9 +681,38 @@ def _title(text, fname):
     return fname.rsplit('.', 1)[0]
 
 
-def _skeleton_text(method, fname):
-    p = config.ROOT / 'templates' / ('项目骨架_风险评估法' if method == '风险评估法' else '项目骨架') / '正文' / fname
+def _skeleton_text(method, fname, t=None):
+    """骨架里同名正文文件的文字（判断这章写好没有）。t＝报告类型（不给按预评价）；骨架里没有这个文件返回 None。"""
+    t = t or tools.doctype.PRE
+    p = tools.doctype.skeleton(t, method if t == tools.doctype.PRE else '') / '正文' / fname
+    if t == tools.doctype.PRE and method != '风险评估法':
+        p = config.ROOT / 'templates' / '项目骨架' / '正文' / fname
     return tools.read(p) if p.is_file() else None
+
+
+def _chapters(root, method, t, rec, chk, rv_dir, prefix=''):
+    """一卷的各章：写好没有、字数、问题。prefix＝“附件册/”时是附件册（文件名前加上，好和主报告的分开）。"""
+    out = []
+    for f in tools.body_files(root):
+        p = root / '正文' / f
+        text = tools.read(p)
+        d = chk['按文件'].get(f, {})
+        rv = rv_dir / f
+        sk = _skeleton_text(method, f, t)
+        out.append({'文件': prefix + f, '标题': _title(text, f), '字数': len(text), '修改': p.stat().st_mtime,
+                    '写好': isinstance(rec.get(f), dict) or (sk is not None and text != sk) or (sk is None and t == tools.doctype.PRE),
+                    '审过': rv.stat().st_mtime if rv.is_file() else None,
+                    '错误': d.get('错误', []), '提示': d.get('提示', []), '待办': d.get('待办', []),
+                    **({'卷': '附件册'} if prefix else {})})
+    return out
+
+
+def new_record(vol):
+    """新报告的写作记录（和 flows/new.py 的 _record_path 一样）：设计专篇附件册的记在主报告的 资料/ 里。"""
+    vol = Path(vol)
+    if tools.report_type(vol) == tools.doctype.ANNEX:
+        return vol.parent / '资料' / '事实片段' / '接着做' / '写作记录_附件册.json'
+    return vol / '资料' / '事实片段' / '接着做' / '写作记录.json'
 
 
 def _row_of(root):
@@ -634,29 +736,37 @@ def api_project(q, body):
     """一份报告的概况：各章（写好没有、字数、问题）、PDF、正在做的事和最近做过的事。"""
     root = _project_root(q.get('路径'))
     row = _row_of(root)
-    method = row.get('方法') or tools.method_of(root)
+    t = tools.report_type(root)
+    method = '' if t != tools.doctype.PRE else (row.get('方法') or tools.method_of(root))
     chk = _check(root)
-    rec_p = root / '资料' / '事实片段' / '接着做' / '写作记录.json'
-    try:
-        rec = json.loads(tools.read(rec_p)) if rec_p.is_file() else {}
-    except ValueError:
-        rec = {}
-    rv_dir = root / '审查' / '审稿记录'
+
+    def _rec(vol):
+        rec_p = new_record(vol)
+        try:
+            return json.loads(tools.read(rec_p)) if rec_p.is_file() else {}
+        except ValueError:
+            return {}
+
     names = tools.body_files(root)
-    chapters = []
-    for f in names:
-        p = root / '正文' / f
-        text = tools.read(p)
-        d = chk['按文件'].get(f, {})
-        rv = rv_dir / f
-        chapters.append({'文件': f, '标题': _title(text, f), '字数': len(text), '修改': p.stat().st_mtime,
-                         '写好': isinstance(rec.get(f), dict) or text != _skeleton_text(method, f),
-                         '审过': rv.stat().st_mtime if rv.is_file() else None,
-                         '错误': d.get('错误', []), '提示': d.get('提示', []), '待办': d.get('待办', [])})
+    chapters = _chapters(root, method, t, _rec(root), chk, root / '审查' / '审稿记录')
     other = [{'文件': k, '错误': v.get('错误', []), '提示': v.get('提示', []), '待办': v.get('待办', [])}
              for k, v in chk['按文件'].items() if k not in names and (v.get('错误') or v.get('提示') or v.get('待办'))]
-    pdfs = sorted((root / '输出').glob('*.pdf'), key=lambda x: x.stat().st_mtime) if (root / '输出').is_dir() else []
-    pdf = {'路径': str(pdfs[-1]), '时间': pdfs[-1].stat().st_mtime, '页数': tools.pdf_pages(pdfs[-1])} if pdfs else None
+    volumes = [{'卷': '主报告', '文件夹': str(root), '错误': chk['错误'], '提示': chk['提示'], '待办': chk['待办']}]
+    annex = tools.doctype.annex_root(root)
+    if annex:                       # 设计专篇：附件册当同一项目的第二卷，各章跟在主报告后面
+        ca = _check(annex)
+        ach = _chapters(annex, '', tools.doctype.ANNEX, _rec(annex), ca, annex / '审查' / '审稿记录', '附件册/')
+        chapters += ach
+        volumes.append({'卷': '附件册', '文件夹': str(annex), '错误': ca['错误'], '提示': ca['提示'], '待办': ca['待办'],
+                        '章节': [c['文件'] for c in ach]})
+        chk = dict(chk, **{k: chk[k] + ca[k] for k in ('错误', '提示', '待办')})
+    def _pdf(vol):
+        found = sorted((vol / '输出').glob('*.pdf'), key=lambda x: x.stat().st_mtime) if (vol / '输出').is_dir() else []
+        return {'路径': str(found[-1]), '时间': found[-1].stat().st_mtime, '页数': tools.pdf_pages(found[-1])} if found else None
+
+    pdf = _pdf(root)
+    for v in volumes:               # 每卷各自最新的 PDF（设计专篇附件册单独成册，要能单独打开）
+        v['PDF'] = _pdf(Path(v['文件夹']))
     note = root / '输出' / '交稿说明.md'
     try:
         gap = gaps.collect(root, chk)
@@ -664,7 +774,8 @@ def api_project(q, body):
         log('资料欠缺清单出错 %s\n%s' % (root, traceback.format_exc()))
         gap = None
     gap_md = root / '输出' / '资料欠缺清单.md'
-    return {'项目': row.get('项目') or tools.project_name(root), '方法': method, '文件夹': str(root),
+    return {'项目': row.get('项目') or tools.project_name(root), '方法': method, '类型': t, '卷': volumes,
+            '预评价': str(tools.doctype.pre_root(root) or '') if t != tools.doctype.PRE else '', '文件夹': str(root),
             '定稿': row.get('定稿') == '是', '错误': chk['错误'], '提示': chk['提示'], '待办': chk['待办'],
             '章节': chapters, '其他文件': other, 'PDF': pdf, '交稿说明': str(note) if note.is_file() else None,
             '做过的事': _project_jobs(root),

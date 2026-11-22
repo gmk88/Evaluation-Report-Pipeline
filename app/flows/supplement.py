@@ -14,6 +14,7 @@ import threading
 from pathlib import Path
 
 from .. import config, gaps, llm, tools
+from ..tools import doctype as DT
 from . import common as C
 from . import facts as F
 from . import publish as P
@@ -43,6 +44,17 @@ TASK = '''任务：上面是建设单位补来的新资料（只给了新资料�
 影响：这条变化要改哪些正文文件，从下面“正文文件”里挑文件名（照抄），拿不准的宁多勿少；只影响事实库、不影响正文的给空列表。
 不列：和事实库说法一样的、只是写法不同的；与职业病危害识别和评价无关的（财务、电气、土建结构、消防、安全生产、环保排放）。
 没有变化就返回空列表。'''
+# 设计专篇的口径表那一节叫“设计文件没有写的”（专篇已按标准写成设计要求）
+GAP_HEAD = {DT.PRE: '可研没有写的', DT.DESIGN: '设计文件没有写的'}
+
+
+def gap_head(root):
+    return GAP_HEAD.get(tools.report_type(DT.main_root(root)), GAP_HEAD[DT.PRE])
+
+
+def task_of(root):
+    h = gap_head(root)
+    return TASK if h == GAP_HEAD[DT.PRE] else TASK.replace('“## 可研没有写的”', '“## %s”' % h)
 
 
 def _dir(root):
@@ -170,16 +182,23 @@ def _take_in(job, root, given):
 
 # ---------------- 2. 摘变化 ----------------
 
+def _where(root, label):
+    """“附件册/02_x.md” → (附件册文件夹, 02_x.md)；别的是 (root, 文件名)。"""
+    if label.startswith('附件册/') and DT.annex_root(root):
+        return Path(DT.annex_root(root)), label[len('附件册/'):]
+    return Path(root), label
+
+
 def _file_list(root):
     out = []
-    for f in tools.body_files(root):
-        hs = [h.lstrip('#').strip() for h in tools.headings(tools.read(Path(root) / '正文' / f), 2)][:10]
-        out.append('%s：%s' % (f, '；'.join(hs)))
+    for label, vol, f in C.vol_files(root):            # 设计专篇：附件册的文件写“附件册/文件名”
+        hs = [h.lstrip('#').strip() for h in tools.headings(tools.read(Path(vol) / '正文' / f), 2)][:10]
+        out.append('%s：%s' % (label, '；'.join(hs)))
     return C.doc('正文文件（影响里照抄文件名）', '\n'.join(out))
 
 
-def _gap_lines(kj):
-    m = re.search(r'^## 可研没有写的.*?$(.*?)(?=^## |\Z)', kj, re.M | re.S)
+def _gap_lines(kj, head=GAP_HEAD[DT.PRE]):
+    m = re.search(r'^## %s.*?$(.*?)(?=^## |\Z)' % re.escape(head), kj, re.M | re.S)
     return [ln for ln in (m.group(1) if m else '').split('\n') if ln.startswith('- ')]
 
 
@@ -193,18 +212,18 @@ def _changed_tokens(old, new):
 def _hits(root, words):
     """正文里出现这些字样的文件（注释不算）。"""
     out = set()
-    for f in tools.body_files(root):
-        text = re.sub(r'<!--.*?-->', '', tools.read(Path(root) / '正文' / f), flags=re.S)
+    for label, vol, f in C.vol_files(root):
+        text = re.sub(r'<!--.*?-->', '', tools.read(Path(vol) / '正文' / f), flags=re.S)
         if any(w in text for w in words):
-            out.add(f)
+            out.add(label)
     return out
 
 
 def _filter(job, root, raw, fact_md, kj):
     """模型给的变化逐条过一遍：更正的原文要是事实库里的整行、补上的原文要是口径表里的一行、新增不重复。
     影响只留正文里真有的文件，再加上正文里还写着旧数字的文件。"""
-    body = set(tools.body_files(root))
-    gap = set(_gap_lines(kj))
+    body = set(tools.body_files(root)) | {'附件册/' + f for f in (tools.body_files(DT.annex_root(root)) if DT.annex_root(root) else [])}
+    gap = set(_gap_lines(kj, gap_head(root)))
     have = {F._norm(ln) for ln in fact_md.split('\n') if ln.startswith('- ')}
     seen, out = set(), []
     for x in raw:
@@ -217,7 +236,7 @@ def _filter(job, root, raw, fact_md, kj):
         elif k == '更正' and not F._fix_ok(fact_md, [{'原文': old, '新文': new}])[0]:
             why = '原文不是事实库里的整条事实'
         elif k == '补上' and old not in gap:
-            why = '原文不是口径表“可研没有写的”里的一行'
+            why = '原文不是口径表“%s”里的一行' % gap_head(root)
         elif k != '更正' and F._norm(new) in have:
             why = '事实库里已经有了'
         elif (k, F._norm(old), F._norm(new)) in seen:
@@ -240,7 +259,7 @@ def _estimate(root, files):
     base = sum(len(t) for _, t in tools.facts(Path(root)))
     out = {}
     for f in files:
-        n = len(tools.read(Path(root) / '正文' / f))
+        n = len(tools.read(_where(root, f)[0] / '正文' / _where(root, f)[1]))
         out[f] = round(llm.cost(model, base + n * 2 + 6000, 4000) + llm.cost(model, n + 4000, 2000), 2)
     return out
 
@@ -258,7 +277,7 @@ def job_supplement(job):
     job.stage('事实')
     texts = [tuple(x) for x in (_load(root, '新资料.json') or [])]
     fact_md, kj = tools.read(root / '资料' / '事实库.md'), tools.read(root / '资料' / '口径.md') if (root / '资料' / '口径.md').is_file() else ''
-    sysmsg = C.system()
+    sysmsg = C.system(tools.report_type(root))
     ctx = '\n\n'.join([C.doc('事实库（现有）', fact_md), C.doc('口径表（现有）', kj), _file_list(root)])
     parts = F._batches(F._pieces(texts, F.CHECK_BATCH), F.CHECK_BATCH)
     raw = []
@@ -270,7 +289,7 @@ def job_supplement(job):
         bp = _dir(root) / ('第%d批.json' % (i + 1))
         first, _, got = tools.read(bp).partition('\n') if bp.is_file() else ('', '', None)
         if first != stamp:
-            res = llm.call_retry(job, label, sysmsg, '\n\n'.join([C.doc(n, t) for n, t in part] + [ctx, TASK]),
+            res = llm.call_retry(job, label, sysmsg, '\n\n'.join([C.doc(n, t) for n, t in part] + [ctx, task_of(root)]),
                                  effort='high', schema=CHANGES, phase='事实')
             tools.write(bp, stamp + '\n' + json.dumps(res['变化'], ensure_ascii=False))
             raw += res['变化']
@@ -332,7 +351,7 @@ def _update_facts(job, root, items):
             fact_md = F._insert(fact_md, x['节'] or '其他', x['新文'])
             n += 1
         if x['类别'] == '补上':
-            kj = '\n'.join(ln for ln in kj.split('\n') if ln != x['原文'])
+            kj = '\n'.join(ln for ln in kj.split('\n') if ln != x['原文'])     # 两种口径表的缺口节都是逐行删
     kj = _add_disagree(kj, [x for x in fixes if x['原文'] in ok_old])
     tools.write(fp, fact_md.rstrip('\n') + '\n')
     tools.write(kp, kj.rstrip('\n') + '\n')
@@ -340,13 +359,14 @@ def _update_facts(job, root, items):
     return n, bad
 
 
-def _changes_doc(items):
+def _changes_doc(items, design=False):
     rows = []
     for x in items:
         if x['类别'] == '更正':
             rows.append('- 更正：%s → %s（%s）' % (x['原文'][2:], x['新文'][2:], x['说明']))
         elif x['类别'] == '补上':
-            rows.append('- 原来“可研没有写”，新资料写了：%s（原来口径表里是：%s）' % (x['新文'][2:], x['原文'][2:]))
+            rows.append('- 原来%s，新资料写了：%s（原来口径表里是：%s）' % ('设计文件没有写、专篇按标准定的' if design else '“可研没有写”',
+                                                               x['新文'][2:], x['原文'][2:]))
         else:
             rows.append('- 新增：%s' % x['新文'][2:])
     return C.doc('补充资料带来的变化（已改进事实库）', '\n'.join(rows))
@@ -357,7 +377,7 @@ def _update_table(job, root, items):
     mine = [x for x in items if any(x['节'].startswith(h) for h in TABLE_HEADS)]
     if not p.is_file() or not mine:
         return 0
-    res = llm.call_retry(job, '改 岗位因素表', C.system(), '\n\n'.join([
+    res = llm.call_retry(job, '改 岗位因素表', C.system(tools.report_type(root)), '\n\n'.join([
         _changes_doc(mine), C.doc('资料/岗位因素表.md（带行号）', tools.numbered(tools.read(p))),
         '任务：按上面的变化改岗位因素表（定员、班制、接触时间、设备、因素、工作地点）。和变化无关的不动；'
         '原来按不利情况定的、新资料写明了的，改成新资料的说法，出处换成新资料，“## 按不利情况定的”里删掉那一项。\n' + C.EDIT_RULES]),
@@ -369,16 +389,22 @@ def _update_table(job, root, items):
     return len(done)
 
 
-def _modify(job, root, fname, items, method):
-    text = tools.read(Path(root) / '正文' / fname)
-    task = ('任务：上面的变化已经改进事实库。按这些变化改正文/%s：用到旧说法的地方改成新的，计数、表格、判定、小结跟着改；'
-            '原来写“可研没有写……”并提补充措施的，新资料写了的照新资料写，补充措施按需要改。'
-            '和这些变化无关的地方不动，不顺手润色。事实只取事实库。\n%s' % (fname, C.EDIT_RULES))
-    e = llm.call_retry(job, '按新资料改 ' + fname, C.system(C.write_format(), ('本章要点卡', C.card(method, fname))),
-                       '\n\n'.join(C.fact_docs(root) + [_changes_doc(items), C.doc('正文/%s（带行号）' % fname, tools.numbered(text)), task]),
+MODIFY_GAP = {DT.PRE: '原来写“可研没有写……”并提补充措施的，新资料写了的照新资料写，补充措施按需要改。',
+              DT.DESIGN: '原来设计文件没写、专篇按标准定的设计要求，新资料写了的：新资料的参数满足或高于原设计要求的照新资料写，'
+                         '低于的保留原设计要求；附件册计算书、投资明细跟着改。'}
+
+
+def _modify(job, root, label, items, method):
+    vol, fname = _where(root, label)
+    t = tools.report_type(vol)
+    text = tools.read(vol / '正文' / fname)
+    task = ('任务：上面的变化已经改进事实库。按这些变化改正文/%s：用到旧说法的地方改成新的，计数、表格、判定、小结跟着改；%s'
+            '和这些变化无关的地方不动，不顺手润色。事实只取事实库。\n%s' % (fname, MODIFY_GAP[DT.PRE if t == DT.PRE else DT.DESIGN], C.EDIT_RULES))
+    e = llm.call_retry(job, '按新资料改 ' + label, C.system(t, C.write_format(), ('本章要点卡', C.card(t, method, fname, root=vol))),
+                       '\n\n'.join(C.fact_docs(vol) + [_changes_doc(items, t != DT.PRE), C.doc('正文/%s（带行号）' % fname, tools.numbered(text)), task]),
                        effort='high', schema=C.EDITS, phase='修改')
-    n, bad = C.apply(job, root, fname, e['改动'], '按新资料改 ' + fname)
-    return {'文件': fname, '改': n, '跳过': e['跳过'] + bad}
+    n, bad = C.apply(job, vol, fname, e['改动'], '按新资料改 ' + label)
+    return {'文件': label, '改': n, '跳过': e['跳过'] + bad}
 
 
 def job_apply(job):
@@ -403,6 +429,8 @@ def job_apply(job):
     if not prog.get('备份'):
         before = tools.check(root)
         mark(备份=str(tools.backup_body(root, '补资料前')), 检查前=before)
+        for vol in DT.volumes(root)[1:]:
+            mark(检查前_附件册=tools.check(vol), 备份_附件册=str(tools.backup_body(vol, '补资料前')))
     if not prog.get('事实库'):
         n, bad = _update_facts(job, root, items)
         mark(事实库=n, 事实库没改=bad)
@@ -411,7 +439,7 @@ def job_apply(job):
     if '岗位因素表' not in prog:
         mark(岗位因素表=_update_table(job, root, items))
     job.stage('修改')
-    files = sorted({f for x in items for f in x['影响'] if f in tools.body_files(root)})
+    files = sorted({f for x in items for f in x['影响'] if f in {label for label, _, _ in C.vol_files(root)}})
     done = dict(prog.get('已改') or {})
     if done:
         job.info('接着上次做：%d 个文件上次已改好' % len(done))
@@ -434,6 +462,9 @@ def job_apply(job):
         chk = RV.clear_all(job, root, method, ignore=before)
     else:
         chk = tools.check(root)
+    for vol in DT.volumes(root)[1:]:          # 设计专篇的附件册：只清这次改了的文件的错误
+        if any(f.startswith('附件册/') for f in done):
+            RV.clear_all(job, vol, method, ignore=prog.get('检查前_附件册'))
     try:
         gaps.write(root, chk)
     except Exception as e:  # noqa: BLE001  清单出错不影响改好的报告

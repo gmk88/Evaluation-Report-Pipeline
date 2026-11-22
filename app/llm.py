@@ -9,6 +9,7 @@ import re
 import threading
 import time
 import urllib.request
+from types import SimpleNamespace
 
 import anthropic
 
@@ -20,13 +21,18 @@ except ImportError:                   # pragma: no cover  老版本接口库用 
 from . import config
 
 # 官方价（美元／百万 token：输入、输出）。中转按自己的价收，这里只作估算
-PRICE = {'claude-opus-5-5': (4.0, 20.0), 'claude-fable-5-1': (10.0, 50.0), 'claude-sonnet-5-5': (2.0, 10.0)}
+PRICE = {'claude-opus-5-5': (4.0, 20.0), 'claude-fable-5-1': (10.0, 50.0), 'claude-sonnet-5-5': (2.0, 10.0),
+         # OpenAI 兼容服务的常见模型（2026-11 官方价，美元／百万 token，只作估算）
+         'deepseek-chat': (0.28, 0.42), 'deepseek-reasoner': (0.28, 0.42),
+         'gpt-4o': (2.5, 10.0), 'gpt-4.1': (2.0, 8.0)}
 FALLBACK_BETA = 'server-side-fallback-2026-07-01'
 USAGE = config.DATA / '用量.jsonl'
 
 _lock = threading.Lock()
 _sem = {'n': 0, 'sem': None}
 CUT = '网络那头中途断了，没收到完整回答'
+FATAL_STATUS = (401, 402, 403)   # 密钥不对、余额不够、没权限
+IDLE = 900             # 流里光有心跳、这么多秒没有内容（含思考）就当中途断了，整次重来
 RETRY_WAIT = (20, 60)  # 没成时等几秒再重来（第 2 次、第 3 次之前）：网络那头断一下，多半一会儿就好
 
 
@@ -35,11 +41,13 @@ class Cancelled(Exception):
 
 
 class CallError(Exception):
-    """调用没成。retry＝False 的（没有密钥、拒答、输出太长、请求本身不对）再来一遍也一样，不重来。"""
+    """调用没成。retry＝False 的（没有密钥、拒答、输出太长、请求本身不对）再来一遍也一样，不重来。
+    fatal＝True 的（密钥不对、余额不够、没权限）后面每一步都会这样：整个任务停下，不再一个文件一个文件地试。"""
 
-    def __init__(self, msg='', retry=True):
+    def __init__(self, msg='', retry=True, fatal=False):
         super().__init__(msg)
-        self.retry = retry
+        self.retry = retry and not fatal
+        self.fatal = fatal
 
 
 def _semaphore():
@@ -50,11 +58,170 @@ def _semaphore():
         return _sem['sem']
 
 
+class _Stalled(Exception):
+    pass
+
+
+class _Watchdog:
+    """流里 IDLE 秒没来任何事件就把流关掉。11-05 田林专篇审稿：中转断线后有两遍一个字不来、挂了 70 多分钟——
+    中转只发心跳（接口库自己吞掉心跳，调用方看不到），读超时被心跳续着永远不触发。"""
+
+    def __init__(self, stream):
+        self.alive, self.fired, self._s = time.time(), False, stream
+        self._stop = threading.Event()
+        threading.Thread(target=self._run, daemon=True).start()
+
+    def _run(self):
+        while not self._stop.wait(min(10.0, IDLE / 4)):
+            if time.time() - self.alive > IDLE:
+                self.fired = True
+                try:
+                    self._s.close()
+                except Exception:  # noqa: BLE001  关不掉也只能等读超时
+                    pass
+                return
+
+    def stop(self):
+        self._stop.set()
+
+
+def _oai_url(base):
+    """填 /v1 或完整的 chat/completions 地址都行。"""
+    base = (base or '').rstrip('/')
+    if not base:
+        return 'https://api.openai.com/v1/chat/completions'
+    return base if base.endswith('/chat/completions') else base + '/chat/completions'
+
+
+class _OAIStream:
+    """把 Chat Completions 的 SSE 流包成 anthropic 流那样：迭代给 text 事件、get_final_message()。
+
+    这样 call()、ping() 和记账、存档、重试那一大段一个字都不用改。anthropic 专有的参数
+    （thinking、betas、cache_control、output_config）在这里翻译或丢掉，不会发给 OpenAI 协议的服务。"""
+
+    def __init__(self, hc, cfg, base, key, kw):
+        self._hc, self._cfg, self._base, self._key, self._kw = hc, cfg, base, key, kw
+        self._cm, self._resp, self._closed = None, None, False
+        self._text, self._usage, self._model, self._finish = [], {}, kw.get('model') or cfg['模型'], None
+
+    def _payload(self, no_usage):
+        kw = self._kw
+        msgs = list(kw.get('messages') or [])
+        system = kw.get('system') or ''
+        fmt = (kw.get('output_config') or {}).get('format')
+        if fmt and fmt.get('type') == 'json_schema' and system:
+            # 各家对 json_schema 的支持不齐（DeepSeek、中转各有各的限制），统一用 json_object：
+            # 把带序号的 schema 写进系统提示，回来的 JSON 照样由 _unkeyed / _misfit 处理
+            system += ('\n\n只输出一个 JSON 对象，键名照抄下面的结构（包括开头的两位序号），'
+                       '不要解释文字、不要代码块：\n' + json.dumps(fmt.get('schema'), ensure_ascii=False))
+        if system:
+            msgs.insert(0, {'role': 'system', 'content': system})
+        payload = {'model': kw.get('model') or self._cfg['模型'], 'messages': msgs,
+                   'max_tokens': kw.get('max_tokens') or 128000, 'stream': True}
+        if fmt and fmt.get('type') == 'json_schema':
+            payload['response_format'] = {'type': 'json_object'}
+        if not no_usage:
+            payload['stream_options'] = {'include_usage': True}
+        return payload
+
+    def _open(self, no_usage):
+        url = _oai_url(self._base)
+        headers = {'Authorization': 'Bearer ' + self._key, 'Content-Type': 'application/json'}
+        request = _httpx.Request('POST', url)
+        try:
+            cm = self._hc.stream('POST', url, json=self._payload(no_usage), headers=headers)
+            resp = cm.__enter__()
+            if resp.status_code >= 400:
+                body = resp.read().decode('utf-8', 'replace')[:300]
+                cm.__exit__(None, None, None)
+                if not no_usage and resp.status_code == 400 and 'stream_options' in body.lower():
+                    return self._open(True)     # 服务不认用量选项：去掉它再发一次
+                raise _httpx.HTTPStatusError('HTTP %s：%s' % (resp.status_code, body), request=request, response=resp)
+        except _httpx.HTTPStatusError as e:
+            raise anthropic.APIStatusError(str(e)[:300], response=e.response, body=None) from None
+        except _httpx.TransportError as e:
+            raise anthropic.APIConnectionError(message=str(e)[:200], request=request) from None
+        self._cm, self._resp = cm, resp
+        return self
+
+    def __enter__(self):
+        return self._open(False)
+
+    def __iter__(self):
+        for line in self._resp.iter_lines():
+            if not line or line.startswith(':'):      # 空行、SSE 心跳
+                continue
+            if not line.startswith('data:'):
+                continue
+            data = line[5:].strip()
+            if data == '[DONE]':
+                break
+            try:
+                obj = json.loads(data)
+            except ValueError:
+                continue
+            if 'error' in obj:
+                e = obj['error']
+                raise CallError('模型服务返回错误：%s' % str(e.get('message') or e)[:200])
+            if obj.get('model'):
+                self._model = obj['model']
+            if obj.get('usage'):
+                self._usage = obj['usage']
+            for ch in obj.get('choices') or []:
+                piece = (ch.get('delta') or {}).get('content') or ''
+                if piece:
+                    self._text.append(piece)
+                    yield SimpleNamespace(type='text', text=piece)
+                if ch.get('finish_reason') is not None:
+                    self._finish = ch['finish_reason']
+
+    def get_final_message(self):
+        reason = {'stop': 'end_turn', 'length': 'max_tokens', 'content_filter': 'refusal'}.get(self._finish, self._finish)
+        u = self._usage or {}
+        return SimpleNamespace(
+            content=[SimpleNamespace(type='text', text=''.join(self._text))],
+            usage=SimpleNamespace(input_tokens=u.get('prompt_tokens') or 0, output_tokens=u.get('completion_tokens') or 0,
+                                  cache_read_input_tokens=0, cache_creation_input_tokens=0),
+            model=self._model, stop_reason=reason, stop_details=None)
+
+    def close(self):
+        """看门狗超时也会调它：把流关掉，迭代随即报错，call() 按“中途断了”整次重来。"""
+        if self._cm is not None and not self._closed:
+            self._closed = True
+            try:
+                self._cm.__exit__(None, None, None)
+            except Exception:  # noqa: BLE001  关流出错也得让调用方继续
+                pass
+
+    def __exit__(self, *a):
+        self.close()
+        return False
+
+
+class _OAIClient:
+    """OpenAI 兼容协议的最小客户端：只需要 .messages / .beta.messages / .stream() / .close()。"""
+
+    def __init__(self, cfg, base, key):
+        self._cfg, self._base, self._key = cfg, base, key
+        self.messages = self
+        self.beta = SimpleNamespace(messages=self)
+        hc_kw = {} if cfg.get('走系统代理') else {'trust_env': False}
+        self._hc = _httpx.Client(timeout=_httpx.Timeout(1800.0, connect=30.0), **hc_kw)
+
+    def stream(self, **kw):
+        return _OAIStream(self._hc, self._cfg, self._base, self._key, kw)
+
+    def close(self):
+        self._hc.close()
+
+
 def client(cfg=None):
     cfg = cfg or config.load()
     base, key, _ = config.credentials(cfg)
     if not key:
         raise CallError('没有密钥：在“设置”里填中转地址和密钥', retry=False)
+    if cfg.get('协议', 'anthropic') == 'openai':
+        return _OAIClient(cfg, base, key)
     kw = {}
     if not cfg.get('走系统代理'):
         # 默认不照这台电脑的系统代理（代理软件）走：接口库会自动照它走，代理线路一断程序就连不上中转，对话却照常
@@ -168,6 +335,36 @@ def _unkeyed(x):
     return x
 
 
+_TYPES = {'object': (dict, '对象'), 'array': (list, '数组'), 'string': (str, '文字'), 'boolean': (bool, '真假值'), 'integer': (int, '整数')}
+_NAMES = {dict: '对象', list: '数组', str: '文字', bool: '真假值', int: '整数', float: '小数', type(None): '空'}
+
+
+def _misfit(x, s, at='结果'):
+    """照 schema 粗查拿回来的结果：类型、必填的键、可选值。对得上回空串，对不上回第一处不对的地方。"""
+    t = s.get('type') if isinstance(s, dict) else None
+    if not isinstance(t, str) or t not in _TYPES:
+        return ''
+    py, name = _TYPES[t]
+    if not isinstance(x, py) or (t == 'integer' and isinstance(x, bool)):
+        return '%s应是%s，拿到的是%s' % (at, name, _NAMES.get(type(x), type(x).__name__))
+    if 'enum' in s and x not in s['enum']:
+        return '%s“%s”不在可选值里' % (at, str(x)[:20])
+    if t == 'object':
+        for k in s.get('required') or []:
+            if k not in x:
+                return '%s缺“%s”' % (at, k)
+        for k, sub in (s.get('properties') or {}).items():
+            bad = _misfit(x[k], sub, k) if k in x else ''
+            if bad:
+                return bad
+    if t == 'array' and isinstance(s.get('items'), dict):
+        for i, v in enumerate(x):
+            bad = _misfit(v, s['items'], '%s第%d项' % (at, i + 1))
+            if bad:
+                return bad
+    return ''
+
+
 def call(job, label, system, content, *, effort='high', schema=None, max_tokens=128000, phase=''):
     """调一次模型。schema 不为空时返回 dict（结构化输出），否则返回文字。
     job 提供：cancelled、step()、project、archive、kind；用量记进 用量.jsonl，输入输出存进 job.archive。"""
@@ -193,18 +390,34 @@ def call(job, label, system, content, *, effort='high', schema=None, max_tokens=
             cl = client(cfg)
             with _api(cl, cfg).stream(**kw) as s:
                 last = 0
-                for ev in s:
-                    if job.cancelled:
-                        raise Cancelled()
-                    if ev.type == 'text':
-                        chars += len(ev.text)
-                        if time.time() - last > 1:
-                            step.update(字数=chars)
-                            last = time.time()
+                dog = _Watchdog(s)
                 try:
-                    m = s.get_final_message()
-                except AssertionError:          # 连回答的开头都没收到，流就结束了
-                    m = None
+                    for ev in s:
+                        dog.alive = time.time()
+                        if job.cancelled:
+                            raise Cancelled()
+                        if ev.type == 'text':
+                            chars += len(ev.text)
+                            if time.time() - last > 1:
+                                step.update(字数=chars)
+                                last = time.time()
+                    if dog.fired:
+                        raise _Stalled()
+                    try:
+                        m = s.get_final_message()
+                    except AssertionError:          # 连回答的开头都没收到，流就结束了
+                        m = None
+                except Cancelled:
+                    raise
+                except Exception:
+                    if dog.fired:               # 看门狗关了流：不管接口库报什么错，都按“中途断了”整次重来
+                        raise _Stalled() from None
+                    raise
+                finally:
+                    dog.stop()
+        except _Stalled:
+            step.update(状态='失败', 说明='中途断了')
+            raise CallError('%s：%s（%d 分钟没收到内容，收到 %d 字）' % (label, CUT, IDLE // 60, chars))
         except Cancelled:
             step.update(状态='已取消')
             raise
@@ -212,8 +425,13 @@ def call(job, label, system, content, *, effort='high', schema=None, max_tokens=
             step.update(状态='失败', 说明='中转返回 %s' % e.status_code)
             # 请求本身不对、密钥不对、余额不够、模型名或地址不对、太长的，再来也一样；
             # 别的（忙、5xx、回答中途发来的出错消息）等一会儿再来
-            raise CallError('%s：中转返回 %s %s' % (label, e.status_code, str(e.message)[:200]),
-                            retry=e.status_code not in (400, 401, 402, 403, 404, 413))
+            # 11-05 田林专篇：中转余额用完后返回 403，各文件、各遍并行照样一个个去试，日志刷了上百条才停
+            raise CallError('%s：中转返回 %s %s%s' % (label, e.status_code, str(e.message)[:200],
+                                                    '（中转余额不够或密钥没权限，任务停下；充值或换密钥后“接着做”）'
+                                                    if e.status_code in FATAL_STATUS else ''),
+                            # 中转把上游出错包成 400“Upstream request failed”（11-05 田林专篇补审）：不是请求不对，再来能成
+                            retry=e.status_code not in (400, 401, 402, 403, 404, 413) or 'Upstream request failed' in str(e.message),
+                            fatal=e.status_code in FATAL_STATUS)
         except anthropic.APIConnectionError as e:
             step.update(状态='失败', 说明='连不上中转')
             raise CallError('%s：连不上中转（%s）%s' % (label, str(e)[:120], _proxy_hint(cfg)))
@@ -258,12 +476,18 @@ def call(job, label, system, content, *, effort='high', schema=None, max_tokens=
         raise CallError('%s：输出太长被截断' % label, retry=False)
     if schema:
         try:
-            data = json.loads(text)
+            data = _unkeyed(json.loads(text))
         except ValueError:
             step.update(状态='失败', 说明='结果不是 JSON')
             raise CallError('%s：结果不是合法 JSON' % label)
+        bad = _misfit(data, schema)
+        if bad:
+            # 中转偶尔不照 schema 出（11-03 田林审第1章：回了光秃秃的数组，键名是“行号”），后面一用就报错、这章就没审；
+            # 当成没成，整次再来
+            step.update(状态='失败', 说明='结果格式不对')
+            raise CallError('%s：结果格式不对（%s）' % (label, bad))
         step.update(状态='完成')
-        return _unkeyed(data)
+        return data
     step.update(状态='完成')
     return text
 

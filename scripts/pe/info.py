@@ -116,3 +116,28 @@ def merge_common(rules, path):
                 rules[k].append(w)
                 added.add(w)
     return added
+
+
+def merge_type(rules, path, common, common_path):
+    """再并报告类型的检查规则（如 标准/设计专篇/检查规则.md），在 merge_common 之后调用。
+    类型规则的“## 豁免通用”一节列出本类型不并的通用规则（已并进来的从 rules 里撤掉）；项目“## 豁免”里列的照样不并。
+    返回并进来的类型规则项（检查时标“设计专篇规则”）。common 是 merge_common 的返回值，撤掉的项从里面去掉。"""
+    added = set()
+    if not path or not Path(path).exists():
+        return added
+    typ = read_rules(path)
+    off = set(typ.get('豁免', []))
+    if off and Path(common_path).exists():
+        base = read_rules(common_path)
+        for k in ('禁用', '正则禁用', '提示'):
+            for w in base.get(k, []):
+                if w in off and w in common:
+                    rules[k] = [x for x in rules[k] if x != w]
+                    common.discard(w)
+    skip = set(rules.get('豁免', []))
+    for k in ('禁用', '正则禁用', '提示', '必备'):
+        for w in typ.get(k, []):
+            if w not in skip and w not in rules[k]:
+                rules[k].append(w)
+                added.add(w)
+    return added

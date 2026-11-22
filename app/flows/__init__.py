@@ -5,7 +5,7 @@ import time
 KINDS = {'新报告': ('new', 'job_new'), '审稿': ('review', 'job_review'), '改稿': ('revise', 'job_revise'),
          '出稿': ('publish', 'job_publish'), '事实库': ('facts', 'job_facts'), '提炼标准': ('distill', 'job_distill'),
          '配图': ('figures', 'job_figures'), '补资料': ('supplement', 'job_supplement'), '按新资料改': ('supplement', 'job_apply'),
-         '自测': (None, None)}
+         '类比资料': ('analog', 'job_analog'), '自测': (None, None)}
 
 
 def selftest(job):

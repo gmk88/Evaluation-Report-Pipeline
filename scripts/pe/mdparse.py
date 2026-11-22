@@ -8,12 +8,19 @@
 - 图片：![说明](图/文件名.png){宽=15cm}
 - 指令注释（独占一行）：<!-- 横向 --> <!-- 纵向 --> <!-- 分页 --> <!-- 空行 -->
   <!-- 表格 列宽=… 字号=… 对齐=… 表后空行=否 -->  <!-- 段落 居中 / 不缩进 / 字号=五号（行距、缩进按比例缩小） -->
+- 公式（设计专篇计算书用）：
+    <!-- 公式 编号=4.2-1 -->            不写编号的 <!-- 公式 --> 是不编号的公式
+    $$Q = n \\cdot V$$                 紧接单独一行 $$…$$（LaTeX 子集，见 omml.py）
+    式中：                              编号的公式必须跟“式中：”块，其后每行
+    $Q$ —— 事故排风量，m³/h             “$符号$ —— 含义，单位”（最后一个逗号后是单位；无单位写“量纲一”）
+  式中块到第一个不符合该格式的行结束；行内 $…$ 只在式中块里识别。没有指令的裸 $$ 行是错误。
+  产出 {'t': 'formula', 'no', 'latex', 'vars': [{'sym', 'text', 'meaning', 'unit', 'src'}…], 'where': 是否有“式中：”行}。
 - 其他 <!-- … --> 注释（可跨行）是写作提示，不输出。
 """
 import re
 from pathlib import Path
 
-DIRECTIVES = ('横向', '纵向', '分页', '空行', '表格', '段落')
+DIRECTIVES = ('横向', '纵向', '分页', '空行', '表格', '段落', '公式')
 RE_HEAD = re.compile(r'^(#{1,4})\s+(.+?)\s*$')
 RE_LIST = re.compile(r'^(\d{1,3})[.．]\s+(.+)$')
 RE_IMG = re.compile(r'^!\[(?P<alt>[^\]]*)\]\((?P<path>[^)]+)\)\s*(?:\{(?P<attrs>[^}]*)\})?\s*$')
@@ -21,6 +28,10 @@ RE_SEP = re.compile(r'^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$')
 RE_TCAP = re.compile(r'^(?:续)?表\s*([0-9A-Z]+(?:\.\d+)*-\d+)')
 RE_FCAP = re.compile(r'^图\s*([0-9A-Z]+(?:\.\d+)*-\d+)')
 RE_DIR = re.compile(r'^<!--\s*(\S+)(.*?)-->\s*$')
+RE_DISPLAY = re.compile(r'^\$\$(.+?)\$\$$')
+RE_WHERE = re.compile(r'^式中[：:]$')
+RE_VAR = re.compile(r'^\$([^$]+)\$\s*[—―－]{1,2}\s*(.+)$')
+RE_INLINE = re.compile(r'\$([^$]+)\$')
 
 
 class ParseError(Exception):
@@ -62,6 +73,75 @@ def parse_attrs(s):
     return out
 
 
+def split_inline(text):
+    """式中块的含义：按行内 $…$ 切开，返回 [(是否公式, 文字)…]。"""
+    out, pos = [], 0
+    for m in RE_INLINE.finditer(text):
+        if m.start() > pos:
+            out.append((False, text[pos:m.start()]))
+        out.append((True, m.group(1).strip()))
+        pos = m.end()
+    if pos < len(text):
+        out.append((False, text[pos:]))
+    return out
+
+
+def split_unit(text):
+    """“含义，单位”→(含义, 单位)：以最后一个（不在行内 $…$ 里的）全角或半角逗号切开；没有逗号单位为空。"""
+    masked = RE_INLINE.sub(lambda m: '\0' * len(m.group(0)), text)
+    k = max(masked.rfind('，'), masked.rfind(','))
+    if k < 0:
+        return text.strip(), ''
+    return text[:k].strip(), text[k + 1:].strip().rstrip('。；;.')
+
+
+def parse_formula(lines, i, fname, rest):
+    """i 指向“公式”指令行；返回 (块, 下一行号)。指令后不是单行 $$…$$ 时 latex 为 None，bad 写原因（由 formula.check 报错）。"""
+    n = len(lines)
+    attrs = parse_attrs(rest)
+    no = attrs.get('编号')
+    b = {'t': 'formula', 'no': no if isinstance(no, str) else None, 'latex': None, 'vars': [], 'where': False,
+         'src': '%s:%d' % (fname, i + 1)}
+    if rest.strip() and not isinstance(no, str):
+        b['bad_attr'] = '公式指令写法：<!-- 公式 编号=4.2-1 -->（编号用等号；不编号的只写 <!-- 公式 -->）'
+    j = i + 1
+    while j < n and not lines[j].strip():
+        j += 1
+    m = RE_DISPLAY.match(lines[j].strip()) if j < n else None
+    if not m:
+        b['bad'] = '公式要写在单独一行 $$…$$ 里（$$ 不要分行写，其后不要跟编号或文字；编号写在指令里）'
+        if j < n and lines[j].strip().startswith('$$'):
+            # 吞掉这个写坏的公式块，免得下一行的 $$ 被当成“缺指令”
+            k = j
+            if lines[j].strip().count('$$') == 1:
+                k = j + 1
+                while k < n and '$$' not in lines[k]:
+                    k += 1
+            return b, min(k, n - 1) + 1
+        return b, i + 1
+    b['latex'] = m.group(1).strip()
+    b['latex_src'] = '%s:%d' % (fname, j + 1)
+    j += 1
+    k = j
+    while k < n and not lines[k].strip():
+        k += 1
+    if k < n and RE_WHERE.match(lines[k].strip()):
+        b['where'] = True
+        j = k + 1
+        while j < n and not lines[j].strip():
+            j += 1
+        while j < n:
+            v = RE_VAR.match(lines[j].strip())
+            if not v:
+                break
+            full = v.group(2).strip()
+            meaning, unit = split_unit(full)
+            b['vars'].append({'sym': v.group(1).strip(), 'text': full, 'meaning': meaning, 'unit': unit,
+                              'src': '%s:%d' % (fname, j + 1)})
+            j += 1
+    return b, j
+
+
 def parse_text(text, fname='正文.md'):
     lines = text.split('\n')
     blocks = []
@@ -93,8 +173,17 @@ def parse_text(text, fname='正文.md'):
                     pending_table = (parse_attrs(rest), i)
                 elif kind == '段落':
                     pending_para = parse_attrs(rest)
+                elif kind == '公式':
+                    b, nxt_i = parse_formula(lines, i, fname, rest)
+                    blocks.append(b)
+                    i = nxt_i
+                    continue
                 i += 1
                 continue
+            m0 = re.match(r'^<!--\s*(\S+)', line)
+            if m0 and m0.group(1) in DIRECTIVES:
+                raise ParseError('%s:%d 指令行要以 --> 结尾，且“--”和“>”之间不留空格、同一行写完（如 <!-- 公式 编号=4.2-1 -->）'
+                                 % (fname, i + 1))
             j = i
             while j < n and '-->' not in lines[j]:
                 j += 1
@@ -104,6 +193,9 @@ def parse_text(text, fname='正文.md'):
                 raise ParseError('%s:%d 注释结束符 --> 后面不要接正文，正文另起一行' % (fname, j + 1))
             i = j + 1
             continue
+        if line.startswith('$$'):
+            raise ParseError('%s:%d 公式块缺指令：$$ 行前面要有“<!-- 公式 编号=章.节-序号 -->”（不编号的写“<!-- 公式 -->”）；'
+                             '表格、列表里不写公式' % (fname, i + 1))
         if line.startswith('|'):
             start = i
             raw = []

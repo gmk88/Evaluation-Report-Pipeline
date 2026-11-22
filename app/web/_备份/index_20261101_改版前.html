@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>预评价编制工作台</title>
+<!-- 浏览器标签上的小图标：和桌面图标一样（app/desktop/icon.icns），内嵌在页面里，不用另外请求 -->
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+<style>
+:root {
+  --bg: #f6f7f9; --card: #ffffff; --line: #dde1e6; --text: #1f2328; --muted: #5d6670;
+  --main: #1f6feb; --main-dark: #1a5fcc; --ok: #1a7f37; --bad: #c62828; --warn: #9a6700;
+  --soft: #eef3fb;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-size: 17px; line-height: 1.6;
+  font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", "Noto Sans CJK SC", sans-serif; }
+header { background: var(--card); border-bottom: 1px solid var(--line); padding: 12px 24px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 22px; margin: 0; }
+#conn { font-size: 16px; color: var(--muted); }
+#conn .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; background: #aaa; }
+#conn.ok .dot { background: var(--ok); } #conn.bad .dot { background: var(--bad); }
+nav { display: flex; gap: 6px; margin-left: auto; }
+nav button { font-size: 17px; padding: 8px 18px; border: 1px solid transparent; border-radius: 8px;
+  background: transparent; color: var(--text); cursor: pointer; }
+nav button:hover { background: var(--soft); }
+nav button.on { background: var(--main); color: #fff; }
+main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 60px; }
+section.page { display: none; } section.page.on { display: block; }
+h2 { font-size: 20px; margin: 8px 0 14px; } h3 { font-size: 18px; margin: 18px 0 10px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; margin-bottom: 16px; }
+.muted { color: var(--muted); } .bad { color: var(--bad); font-weight: 600; } .ok { color: var(--ok); }
+.note { color: var(--muted); font-size: 16px; }
+button, .btn { font: inherit; font-size: 16px; padding: 7px 16px; border-radius: 8px; border: 1px solid #b9c0c8;
+  background: #fff; color: var(--text); cursor: pointer; }
+button:hover { background: var(--soft); }
+button:disabled { opacity: .5; cursor: default; }
+button.main { background: var(--main); border-color: var(--main); color: #fff; }
+button.main:hover { background: var(--main-dark); }
+button.danger { color: var(--bad); border-color: #e3a5a5; }
+button.small { font-size: 16px; padding: 4px 10px; }
+.bigbtns { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.bigbtns button { font-size: 20px; padding: 18px 10px; border-radius: 12px; background: var(--card);
+  border: 2px solid var(--main); color: var(--main); font-weight: 600; }
+.bigbtns button:hover { background: var(--main); color: #fff; }
+.bigbtns small { display: block; font-size: 16px; font-weight: 400; margin-top: 4px; }
+table { border-collapse: collapse; width: 100%; background: var(--card); }
+th, td { border-bottom: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+th { background: #f0f2f5; font-weight: 600; white-space: nowrap; }
+td.num, th.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+tr.click { cursor: pointer; } tr.click:hover td { background: var(--soft); }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+.tablewrap table { border: 0; }
+.acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { display: inline-block; padding: 1px 10px; border-radius: 12px; font-size: 16px; background: #eceff3; white-space: nowrap; }
+.st-进行, .st-等待, .st-排队 { background: #e3edfd; color: var(--main-dark); }
+.st-完成 { background: #e3f4e8; color: var(--ok); }
+.st-失败, .st-中断 { background: #fde7e7; color: var(--bad); }
+.st-已取消, .st-跳过 { background: #f1f1f1; color: var(--muted); }
+label.f { display: block; font-weight: 600; margin: 14px 0 6px; }
+input[type=text], input[type=password], input[type=number], select, textarea {
+  font: inherit; font-size: 16px; width: 100%; padding: 8px 10px; border: 1px solid #b9c0c8; border-radius: 8px; background: #fff; }
+textarea { min-height: 110px; resize: vertical; }
+.row { display: flex; gap: 8px; align-items: center; } .row > input { flex: 1; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+.checks label { display: inline-flex; align-items: center; gap: 6px; margin: 4px 18px 4px 0; font-weight: 400; cursor: pointer; }
+input[type=checkbox], input[type=radio] { width: 18px; height: 18px; }
+.formbtns { display: flex; gap: 10px; margin-top: 20px; align-items: center; flex-wrap: wrap; }
+.msg { margin-top: 12px; padding: 10px 12px; border-radius: 8px; display: none; white-space: pre-wrap; }
+.msg.on { display: block; } .msg.err { background: #fde7e7; color: var(--bad); } .msg.info { background: var(--soft); }
+.empty { padding: 26px; text-align: center; color: var(--muted); background: var(--card); border: 1px dashed var(--line); border-radius: 10px; }
+pre.text { font-family: Menlo, Consolas, "Courier New", monospace; font-size: 16px; white-space: pre-wrap; word-break: break-word;
+  background: #fafbfc; border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 0; }
+#log { max-height: 420px; overflow-y: auto; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; }
+.kv > .k { color: var(--muted); white-space: nowrap; } .kv > .v { word-break: break-all; }
+ul.plain { margin: 4px 0; padding-left: 22px; }
+a.link { color: var(--main); text-decoration: underline; cursor: pointer; word-break: break-all; }
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+#modal { position: fixed; inset: 0; background: rgba(20, 24, 30, .45); display: none; z-index: 20;
+  align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; }
+#modal.on { display: flex; }
+#modalBox { background: var(--card); border-radius: 12px; width: min(860px, 100%); padding: 20px 24px 24px; box-shadow: 0 10px 40px rgba(0,0,0,.2); }
+#modalHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+#modalHead h2 { margin: 0; }
+#fatal { display: none; max-width: 760px; margin: 80px auto; padding: 30px; font-size: 20px; text-align: center;
+  background: var(--card); border: 2px solid var(--bad); border-radius: 12px; color: var(--bad); }
+body.dead header, body.dead main { display: none; } body.dead #fatal { display: block; }
+#toast { position: fixed; right: 20px; bottom: 20px; max-width: 460px; padding: 12px 16px; border-radius: 10px;
+  background: #333; color: #fff; display: none; z-index: 30; white-space: pre-wrap; }
+#toast.on { display: block; } #toast.err { background: var(--bad); }
+@media (max-width: 760px) { .bigbtns { grid-template-columns: 1fr 1fr; } .grid2 { grid-template-columns: 1fr; } nav { margin-left: 0; flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<div id="fatal"></div>
+<header>
+  <h1>预评价编制工作台</h1>
+  <div id="conn"><span class="dot"></span><span id="connText">正在连接…</span></div>
+  <nav id="nav">
+    <button data-page="projects">项目</button>
+    <button data-page="jobs">任务</button>
+    <button data-page="usage">用量</button>
+    <button data-page="standards">标准</button>
+    <button data-page="settings">设置</button>
+  </nav>
+</header>
+<main>
+  <section class="page" id="page-projects"></section>
+  <section class="page" id="page-jobs"></section>
+  <section class="page" id="page-usage"></section>
+  <section class="page" id="page-standards"></section>
+  <section class="page" id="page-settings"></section>
+</main>
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div id="modalBox">
+    <div id="modalHead"><h2 id="modalTitle"></h2><button id="modalClose" aria-label="关闭">关闭</button></div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+/* SCRIPT-START */
+'use strict';
+// ---------- 小工具：建元素一律用 textContent，不拼外来文字 ----------
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  if (attrs) {
+    for (const [k, v] of Object.entries(attrs)) {
+      if (v === undefined || v === null || v === false) continue;
+      if (k === 'class') e.className = v;
+      else if (k === 'text') e.textContent = String(v);
+      else if (k.startsWith('on') && typeof v === 'function') e.addEventListener(k.slice(2), v);
+      else if (v === true) e.setAttribute(k, '');
+      else e.setAttribute(k, String(v));
+    }
+  }
+  for (const c of kids.flat()) {
+    if (c === undefined || c === null || c === false) continue;
+    e.appendChild(c instanceof Node ? c : document.createTextNode(String(c)));
+  }
+  return e;
+}
+function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); return node; }
+const $ = (id) => document.getElementById(id);
+
+// ---------- 接口 ----------
+class ApiErr extends Error { constructor(code, msg) { super(msg); this.code = code; } }
+let DEAD = false;
+function die() {
+  if (DEAD) return;
+  DEAD = true;
+  stopTimers();
+  $('fatal').textContent = '口令过期：请双击桌面上的“预评价编制工作台”重新打开';
+  document.body.classList.add('dead');
+}
+async function api(path, body, method) {
+  if (DEAD) throw new ApiErr(403, '口令过期');
+  const opt = { method: method || (body === undefined ? 'GET' : 'POST'), credentials: 'same-origin', cache: 'no-store', headers: {} };
+  if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
+  let r;
+  try { r = await fetch(path, opt); }
+  catch (e) { throw new ApiErr(0, '连不上后台服务：请双击桌面上的“预评价编制工作台”'); }
+  let d = null;
+  try { d = await r.json(); } catch (e) { d = null; }
+  // 只有口令不对才整页提示；“这个文件不能打开”之类的 403 照常显示那句话
+  if (r.status === 403 && (!d || (typeof d['错误'] === 'string' && d['错误'].indexOf('口令不对') === 0))) { die(); throw new ApiErr(403, '口令过期'); }
+  if (!r.ok) {
+    const m = d && typeof d['错误'] === 'string' ? d['错误'] : '服务出错了（' + r.status + '）';
+    throw new ApiErr(r.status, m);
+  }
+  if (d === null) throw new ApiErr(r.status, '服务回的内容看不懂');
+  return d;
+}
+function errText(e) { return (e && e instanceof ApiErr) ? e.message : '出错了，请刷新页面再试'; }
+async function openPath(p) {
+  try { await api('/api/open', { '路径': p }); toast('已在电脑上打开'); }
+  catch (e) { if (!DEAD) toast(errText(e), true); }
+}
+async function pick(kind, multi, prompt) {
+  try { const d = await api('/api/pick', { '类型': kind, '多选': !!multi, '提示': prompt || '' }); return Array.isArray(d['路径']) ? d['路径'] : []; }
+  catch (e) { if (!DEAD) toast(errText(e), true); return []; }
+}
+
+// ---------- 提示条、弹层 ----------
+let toastTimer = 0;
+function toast(msg, isErr) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'on' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, isErr ? 7000 : 3000);
+}
+let modalOnClose = null;
+function openModal(title, body, onClose) {
+  $('modalTitle').textContent = title;
+  clear($('modalBody')).appendChild(body);
+  $('modal').classList.add('on');
+  modalOnClose = onClose || null;
+}
+function closeModal() {
+  $('modal').classList.remove('on');
+  clear($('modalBody'));
+  const f = modalOnClose; modalOnClose = null;
+  if (f) f();
+}
+$('modalClose').addEventListener('click', closeModal);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && $('modal').classList.contains('on')) closeModal(); });
+function showMsg(box, text, isErr) { box.textContent = text; box.className = 'msg on ' + (isErr ? 'err' : 'info'); }
+
+// ---------- 格式 ----------
+const pad = (n) => String(n).padStart(2, '0');
+function fmtTime(t) {
+  if (!t) return '';
+  const d = new Date(Number(t) * 1000);
+  if (isNaN(d.getTime())) return '';
+  const now = new Date();
+  const hm = pad(d.getHours()) + ':' + pad(d.getMinutes());
+  if (d.toDateString() === now.toDateString()) return '今天 ' + hm;
+  return (d.getFullYear() !== now.getFullYear() ? d.getFullYear() + '-' : '') + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + hm;
+}
+function fmtDur(sec) {
+  if (sec === null || sec === undefined || isNaN(sec) || sec < 0) return '';
+  sec = Math.round(sec);
+  if (sec < 60) return sec + ' 秒';
+  const m = Math.floor(sec / 60), s = sec % 60;
+  if (m < 60) return m + ' 分' + (s ? ' ' + s + ' 秒' : '');
+  return Math.floor(m / 60) + ' 小时 ' + (m % 60) + ' 分';
+}
+function fmtNum(n) { n = Number(n); return isFinite(n) && n ? n.toLocaleString('zh-CN') : (n === 0 ? '0' : ''); }
+function fmtUsd(n) { n = Number(n); return isFinite(n) ? '$' + n.toFixed(n >= 100 ? 0 : 2) : ''; }
+function tag(state) { return el('span', { class: 'tag st-' + String(state || ''), text: state || '' }); }
+function empty(text) { return el('div', { class: 'empty', text: text }); }
+// 绝对路径：Mac 以 / 开头，Windows 以 C:\ 或 \\ 开头
+function isAbsPath(s) { return typeof s === 'string' && s.length < 1000 && !/\n/.test(s) && (/^\/[^\/\s]/.test(s) || /^[A-Za-z]:[\\\/]/.test(s) || /^\\\\[^\\]/.test(s)); }
+function pathLink(p, label) {
+  return el('a', { class: 'link', href: '#', title: p, onclick: (e) => { e.preventDefault(); openPath(p); } }, label || p);
+}
+// ---------- 导航（网址 # 后面记住在哪一页，刷新不丢） ----------
+let timers = [];
+function stopTimers() { timers.forEach(clearTimeout); timers = []; }
+function later(fn, ms) { const id = setTimeout(fn, ms); timers.push(id); return id; }
+const PAGES = { projects: showProjects, jobs: showJobs, usage: showUsage, standards: showStandards, settings: showSettings };
+let routeSeq = 0;
+function go(hash) { if (location.hash === '#' + hash) route(); else location.hash = hash; }
+function route() {
+  if (DEAD) return;
+  stopTimers();
+  routeSeq++;
+  let h = location.hash.replace(/^#/, '');
+  try { h = decodeURIComponent(h); } catch (e) { h = ''; }   // 网址被改坏了就回项目页
+  let page = h.split('/')[0];
+  if (page === 'job') page = 'jobs';
+  if (!PAGES[page]) page = 'projects';
+  document.querySelectorAll('section.page').forEach((s) => s.classList.toggle('on', s.id === 'page-' + page));
+  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.page === page));
+  const box = clear($('page-' + page));
+  if (h.indexOf('job/') === 0) showJob(box, h.slice(4), routeSeq);
+  else PAGES[page](box, routeSeq);
+}
+// 页面切走以后，还没回来的请求不再往旧页面里写
+const stale = (seq) => seq !== routeSeq || DEAD;
+document.querySelectorAll('#nav button').forEach((b) => b.addEventListener('click', () => go(b.dataset.page)));
+window.addEventListener('hashchange', route);
+
+// ---------- 连接状态 ----------
+let SETTINGS = null;
+async function loadSettings() {
+  try {
+    SETTINGS = await api('/api/settings');
+    const c = $('conn');
+    c.className = SETTINGS['有密钥'] ? 'ok' : 'bad';
+    $('connText').textContent = SETTINGS['有密钥']
+      ? '已连接：' + (SETTINGS['地址生效'] || '官方接口') + '（密钥来自' + (SETTINGS['密钥来源'] || '') + '）'
+      : '还没有设置密钥：到“设置”里填上';
+  } catch (e) {
+    if (DEAD) return;
+    $('conn').className = 'bad';
+    $('connText').textContent = errText(e);
+  }
+  return SETTINGS;
+}
+// ---------- 项目页 ----------
+let PROJECTS = [];
+async function loadProjects() {
+  const d = await api('/api/overview');
+  PROJECTS = Array.isArray(d['项目']) ? d['项目'] : [];
+  return PROJECTS;
+}
+function joinPath(dir, ...names) {
+  const sep = dir.indexOf('\\') >= 0 && dir.indexOf('/') < 0 ? '\\' : '/';
+  return dir.replace(/[\\\/]+$/, '') + sep + names.join(sep);
+}
+async function showNote(p) {
+  const f = joinPath(p['文件夹'], '输出', '交稿说明.md');
+  const body = el('div', null, el('p', { class: 'muted', text: '正在读取…' }));
+  openModal('交稿说明：' + (p['项目'] || ''), body);
+  try {
+    const d = await api('/api/file?' + new URLSearchParams({ '路径': f }));
+    clear(body).appendChild(el('pre', { class: 'text', text: d['文字'] || '' }));
+    body.appendChild(el('div', { class: 'formbtns' }, el('button', { onclick: () => openPath(d['路径'] || f) }, '在电脑上打开')));
+  } catch (e) {
+    if (DEAD) return;
+    clear(body).appendChild(el('p', { text: e.code === 404 ? '还没有交稿说明' : errText(e) }));
+  }
+}
+async function showProjects(box, seq) {
+  const big = el('div', { class: 'bigbtns' },
+    el('button', { onclick: () => formNew() }, '新报告', el('small', { text: '从可研资料写一份新报告' })),
+    el('button', { onclick: () => formRevise() }, '改稿', el('small', { text: '照专家或用户的意见改' })),
+    el('button', { onclick: () => formReview() }, '审稿', el('small', { text: '全文审一遍，找问题' })),
+    el('button', { onclick: () => formPublish() }, '出稿', el('small', { text: '生成 Word 和 PDF' })));
+  const list = el('div', null, el('p', { class: 'muted', text: '正在读取项目，检查正文要几秒钟…' }));
+  box.append(big, el('h2', { text: '登记的项目' }), list);
+  try { await loadProjects(); }
+  catch (e) { if (!stale(seq)) clear(list).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+  if (stale(seq)) return;
+  clear(list);
+  if (!PROJECTS.length) {
+    list.appendChild(empty('还没有登记的项目。点上面的“新报告”写第一份，写完会自动登记。'));
+    return;
+  }
+  const tb = el('tbody');
+  for (const p of PROJECTS) {
+    const ok = p['存在'] !== false;
+    const err = Number(p['错误'] || 0);
+    const pdfInfo = p['PDF'] ? [fmtTime(p['PDF时间']), p['页数'] ? '（' + p['页数'] + ' 页）' : ''].join(' ') : '还没有';
+    tb.appendChild(el('tr', null,
+      el('td', null, el('div', { text: p['项目'] || '' }), el('div', { class: 'note', text: ok ? p['文件夹'] : '文件夹找不到了：' + p['文件夹'] })),
+      el('td', { text: p['方法'] || '' }),
+      el('td', { class: 'num' + (err > 0 ? ' bad' : ''), text: ok ? String(err) : '' }),
+      el('td', { class: 'num', text: ok ? String(p['提示'] || 0) : '' }),
+      el('td', { class: 'num', text: ok ? String(p['待办'] || 0) : '' }),
+      el('td', { text: fmtTime(p['正文修改']) }),
+      el('td', { text: ok ? pdfInfo : '' }),
+      el('td', null, el('div', { class: 'acts' },
+        el('button', { class: 'small', disabled: !ok, onclick: () => openPath(p['文件夹']) }, '打开文件夹'),
+        el('button', { class: 'small', disabled: !p['PDF'], onclick: () => openPath(p['PDF']) }, '看 PDF'),
+        el('button', { class: 'small', disabled: !ok, onclick: () => showNote(p) }, '看交稿说明')))));
+  }
+  list.appendChild(el('div', { class: 'tablewrap' }, el('table', null,
+    el('thead', null, el('tr', null, el('th', { text: '项目' }), el('th', { text: '方法' }), el('th', { class: 'num', text: '错误' }),
+      el('th', { class: 'num', text: '提示' }), el('th', { class: 'num', text: '待办' }), el('th', { text: '正文最后修改' }),
+      el('th', { text: '最新 PDF' }), el('th', { text: '操作' }))), tb)));
+  list.appendChild(el('p', { class: 'note', text: '错误是机器检查查出的必须改的问题，出稿前要清零；提示、待办供参考。' }));
+}
+// ---------- 表单公用 ----------
+let fieldSeq = 0;
+function field(label, input, note) {
+  // 标签指向框里的第一个输入框（“放在哪”这类带按钮的一行也能点标签定位）
+  const target = input.matches('input,select,textarea') ? input : (input.querySelector('input,select,textarea') || input);
+  target.id = target.id || 'f' + (++fieldSeq);
+  return el('div', null, el('label', { class: 'f', for: target.id, text: label }), input, note ? el('div', { class: 'note', text: note }) : null);
+}
+function textInput(value, placeholder) { const i = el('input', { type: 'text', placeholder: placeholder || '' }); i.value = value || ''; return i; }
+function check(label, on) {
+  const c = el('input', { type: 'checkbox' }); c.checked = !!on;
+  return { box: c, label: el('label', null, c, label) };
+}
+function formButtons(submitText, onSubmit) {
+  const msg = el('div', { class: 'msg', role: 'alert' });
+  const btn = el('button', { class: 'main' }, submitText);
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try { await onSubmit(msg, btn); } finally { btn.disabled = false; }
+  });
+  return { btn, msg, node: el('div', null, el('div', { class: 'formbtns' }, btn, el('button', { onclick: closeModal }, '取消')), msg) };
+}
+async function startJob(kind, params, project, msg) {
+  const body = { '类别': kind, '参数': params };
+  if (project !== undefined && project !== null) body['项目'] = project;
+  showMsg(msg, '正在提交…', false);
+  try {
+    const d = await api('/api/jobs', body);
+    modalOnClose = null;
+    closeModal();
+    toast('任务已开始');
+    go('job/' + d['号']);
+  } catch (e) {
+    if (!DEAD) showMsg(msg, errText(e), true);   // 409（项目正在跑别的任务）、400 都显示服务端那句话
+  }
+}
+async function needProjects() {
+  if (!PROJECTS.length) { try { await loadProjects(); } catch (e) { if (!DEAD) toast(errText(e), true); } }
+  return PROJECTS.filter((p) => p['存在'] !== false && p['文件夹']);
+}
+async function projectSelect() {
+  const s = el('select');
+  for (const p of await needProjects()) s.appendChild(el('option', { value: p['文件夹'], text: (p['项目'] || '') + '（' + (p['方法'] || '') + '）' }));
+  return s;
+}
+function lines(text) { return text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean); }
+
+// ---------- 新报告 ----------
+async function formNew() {
+  if (!SETTINGS) await loadSettings();
+  const where = textInput(SETTINGS ? SETTINGS['项目位置'] : '', '例如 /Users/名字/Desktop/评价报告项目');
+  const name = textInput('', '例如 某某公司某某项目预评价');
+  const whereRow = el('div', { class: 'row' }, where, el('button', { onclick: async () => {
+    const r = await pick('文件夹', false, '选择新报告放在哪个文件夹里');
+    if (r.length) where.value = r[0];
+  } }, '选择…'));
+  const methods = el('div', { class: 'checks', role: 'radiogroup' });
+  for (const m of ['类比法', '风险评估法']) methods.appendChild(el('label', null, el('input', { type: 'radio', name: 'method', value: m }), m));
+  const files = el('textarea', { placeholder: '一行一个路径。可以直接粘贴，也可以点右边的按钮添加。' });
+  const add = (r) => { if (r.length) files.value = (files.value.replace(/\s+$/, '') + '\n' + r.join('\n')).replace(/^\n/, '') + '\n'; };
+  const fileBtns = el('div', { class: 'acts', style: 'margin-top:6px' },
+    el('button', { onclick: async () => add(await pick('文件', true, '选择资料文件（可以多选）')) }, '添加文件…'),
+    el('button', { onclick: async () => add(await pick('文件夹', false, '选择资料文件夹')) }, '添加文件夹…'));
+  const title = textInput('', '空着＝从资料里读');
+  const short = textInput('', '空着＝程序自己定');
+  const code = textInput('', '例如 AT-2026-Y018');
+  const date = textInput('', '例如 2026年11月');
+  const rv = check('写完审稿', true), pub = check('审完出稿', true);
+  const fb = formButtons('开始写', async (msg) => {
+    const base = where.value.trim().replace(/^["'“”]+|["'“”]+$/g, '');
+    const n = name.value.trim();
+    const m = methods.querySelector('input:checked');
+    if (!base) return showMsg(msg, '请填“放在哪”', true);
+    if (!n) return showMsg(msg, '请填“新文件夹名”', true);
+    if (/[\\\/:*?"<>|]/.test(n)) return showMsg(msg, '文件夹名里不能有 \\ / : * ? " < > | 这些符号', true);
+    if (/^\.+$/.test(n) || /[. ]$/.test(n)) return showMsg(msg, '文件夹名不能只有点，也不能以点或空格结尾', true);
+    if (!m) return showMsg(msg, '请选择评价方法：类比法或风险评估法', true);
+    const given = lines(files.value);
+    if (!given.length) return showMsg(msg, '请至少添加一份资料（可研报告等）', true);
+    await startJob('新报告', { '文件夹': joinPath(base, n), '方法': m.value, '资料': given, '名称': title.value.trim(),
+      '简称': short.value.trim(), '编号': code.value.trim(), '日期': date.value.trim(), '审稿': rv.box.checked, '出稿': pub.box.checked }, null, msg);
+  });
+  openModal('新报告', el('div', null,
+    el('div', { class: 'grid2' }, field('放在哪', whereRow), field('新文件夹名（必填）', name, '两样合起来就是这份报告的项目文件夹，要用新的或空的文件夹')),
+    field('评价方法（必选）', methods),
+    field('资料', files), fileBtns,
+    el('div', { class: 'grid2' }, field('项目名称', title), field('简称', short), field('报告编号', code), field('报告日期', date)),
+    el('div', { class: 'checks', style: 'margin-top:14px' }, rv.label, pub.label),
+    fb.node));
+  name.focus();
+}
+// ---------- 改稿 ----------
+async function formRevise() {
+  const words = el('textarea', { placeholder: '照原话粘贴，不用整理', style: 'min-height:200px' });
+  const projs = await needProjects();
+  const all = check('全部项目', true);
+  const boxes = projs.map((p) => ({ p, c: check((p['项目'] || '') + '（' + (p['方法'] || '') + '）', true) }));
+  all.box.addEventListener('change', () => boxes.forEach((b) => { b.c.box.checked = all.box.checked; }));
+  boxes.forEach((b) => b.c.box.addEventListener('change', () => { all.box.checked = boxes.every((x) => x.c.box.checked); }));
+  const pub = check('改完出稿', true);
+  const warn = '改稿会把这条意见记进标准，以后所有报告都按它写。';
+  let warned = false;
+  const fb = formButtons('提交', async (msg, btn) => {
+    const w = words.value.trim();
+    if (!w) return showMsg(msg, '请把修改意见粘贴进来', true);
+    const chosen = boxes.filter((b) => b.c.box.checked).map((b) => b.p['文件夹']);
+    if (!all.box.checked && !chosen.length) return showMsg(msg, '请至少勾选一个项目', true);
+    if (!warned) {                 // 第一次点：先提醒一句，再点一次才提交
+      warned = true;
+      btn.textContent = '知道了，提交';
+      return showMsg(msg, warn + '\n确认没问题就再点一次“知道了，提交”。', false);
+    }
+    await startJob('改稿', { '意见': w, '项目': all.box.checked ? '全部' : chosen, '出稿': pub.box.checked }, null, msg);
+  });
+  openModal('改稿', el('div', null,
+    field('修改意见', words, '专家意见、用户意见都照原话粘贴'),
+    el('label', { class: 'f', text: '改哪些项目' }),
+    projs.length ? el('div', { class: 'checks' }, all.label, el('br'), boxes.map((b) => b.c.label))
+      : el('p', { class: 'muted', text: '还没有登记的项目，先用“新报告”写完一份，再来改稿。' }),
+    el('div', { class: 'checks', style: 'margin-top:14px' }, pub.label),
+    el('p', { class: 'note', text: warn }),
+    fb.node));
+  words.focus();
+}
+
+// ---------- 审稿 ----------
+async function formReview() {
+  const sel = await projectSelect();
+  if (!sel.options.length) return openModal('审稿', empty('还没有登记的项目，先写一份新报告。'));
+  const ch = textInput('', '例如 05,07；空着＝全部章节');
+  const focus = textInput('', '例如 重点看第 7 章防护设施；空着＝按审稿清单全面看');
+  const look = check('只看不改', false), pub = check('审完出稿', false);
+  look.box.addEventListener('change', () => { pub.box.disabled = look.box.checked; if (look.box.checked) pub.box.checked = false; });
+  const fb = formButtons('开始审稿', async (msg) => {
+    await startJob('审稿', { '章': ch.value.trim(), '重点': focus.value.trim(), '只看': look.box.checked, '出稿': pub.box.checked }, sel.value, msg);
+  });
+  openModal('审稿', el('div', null,
+    field('项目', sel), field('只审哪几章', ch), field('这次特别看什么', focus),
+    el('div', { class: 'checks', style: 'margin-top:14px' }, look.label, pub.label),
+    el('p', { class: 'note', text: '不勾“只看不改”时，审出的问题会直接改进正文（改前自动备份）。' }),
+    fb.node));
+}
+
+// ---------- 出稿 ----------
+async function formPublish() {
+  const sel = await projectSelect();
+  if (!sel.options.length) return openModal('出稿', empty('还没有登记的项目，先写一份新报告。'));
+  const fb = formButtons('开始出稿', async (msg) => { await startJob('出稿', {}, sel.value, msg); });
+  openModal('出稿', el('div', null, field('项目', sel),
+    el('p', { class: 'note', text: '生成 Word 和 PDF，放在项目的“输出”文件夹里；检查有错误时不出稿。' }), fb.node));
+}
+// ---------- 任务页 ----------
+const RUNNING = ['进行', '等待'];
+const AGAIN_KINDS = ['新报告', '事实库'];   // 能“接着做”的任务（和网页服务的 AGAIN 一样）
+function baseName(p) { return String(p || '').replace(/[\\\/]+$/, '').split(/[\\\/]/).pop(); }
+function jobProject(j) { return j['项目名'] || baseName(j['项目']) || (j['类别'] === '改稿' ? '（意见里选的项目）' : ''); }
+function jobDur(j) {
+  if (!j['开始']) return '';
+  const end = j['结束'] || (RUNNING.indexOf(j['状态']) >= 0 ? Date.now() / 1000 : null);
+  return end ? fmtDur(end - j['开始']) : '';
+}
+async function showJobs(box, seq) {
+  box.appendChild(el('h2', { text: '任务' }));
+  const list = box.appendChild(el('div', null, el('p', { class: 'muted', text: '正在读取…' })));
+  let failures = 0;
+  const tick = async () => {
+    let arr;
+    try { arr = await api('/api/jobs'); failures = 0; }
+    catch (e) {
+      if (stale(seq)) return;
+      if (++failures >= 2 || !list.querySelector('table')) clear(list).appendChild(el('p', { class: 'bad', text: errText(e) }));
+      later(tick, 4000); return;
+    }
+    if (stale(seq)) return;
+    arr = Array.isArray(arr) ? arr.slice() : [];
+    // 进行中的排前面，其余按建立时间新的在前
+    arr.sort((a, b) => (RUNNING.indexOf(b['状态']) >= 0) - (RUNNING.indexOf(a['状态']) >= 0) || (b['建立'] || 0) - (a['建立'] || 0));
+    clear(list);
+    if (!arr.length) list.appendChild(empty('还没有任务。到“项目”页点“新报告”“改稿”“审稿”或“出稿”开始。'));
+    else {
+      const tb = el('tbody');
+      for (const j of arr) {
+        const u = j['用量'] || {};
+        const doing = Array.isArray(j['进行中']) && j['进行中'].length ? '正在：' + j['进行中'].join('、') : '';
+        tb.appendChild(el('tr', { class: 'click', tabindex: '0', onclick: () => go('job/' + j['号']),
+          onkeydown: (e) => { if (e.key === 'Enter') go('job/' + j['号']); } },
+          el('td', { text: fmtTime(j['建立']) }), el('td', { text: j['类别'] || '' }), el('td', { text: jobProject(j) }),
+          el('td', null, el('div', { text: j['标题'] || '' }), doing ? el('div', { class: 'note', text: doing }) : null),
+          el('td', null, tag(j['状态'])), el('td', { text: jobDur(j) }),
+          el('td', { class: 'num', text: fmtNum(u['输入'] || 0) }), el('td', { class: 'num', text: fmtNum(u['输出'] || 0) }),
+          el('td', { class: 'num', text: fmtUsd(u['美元'] || 0) })));
+      }
+      list.appendChild(el('div', { class: 'tablewrap' }, el('table', null, el('thead', null, el('tr', null,
+        ['建立时间', '类别', '项目', '标题', '状态', '用时'].map((t) => el('th', { text: t })),
+        ['输入 token', '输出 token', '估算美元'].map((t) => el('th', { class: 'num', text: t })))), tb)));
+      list.appendChild(el('p', { class: 'note', text: '点一行看详情。每 2 秒自动刷新。' }));
+    }
+    later(tick, 2000);
+  };
+  tick();
+}
+
+// 结果：键值对展开成列表和小表格，绝对路径给“打开”链接
+function renderValue(v, depth) {
+  depth = depth || 0;
+  if (v === null || v === undefined || v === '') return el('span', { class: 'muted', text: '（无）' });
+  if (typeof v === 'boolean') return el('span', { text: v ? '是' : '否' });
+  if (typeof v === 'number') return el('span', { text: fmtNum(v) });
+  if (typeof v === 'string') {
+    if (isAbsPath(v)) return el('span', null, el('span', { text: v + ' ' }), pathLink(v, '打开'));
+    return v.indexOf('\n') >= 0 ? el('pre', { class: 'text', text: v }) : el('span', { text: v });
+  }
+  if (depth > 5) return el('span', { class: 'muted', text: '（内容太深，略）' });
+  if (Array.isArray(v)) {
+    if (!v.length) return el('span', { class: 'muted', text: '（无）' });
+    const items = v.slice(0, 300);
+    const objs = items.every((x) => x && typeof x === 'object' && !Array.isArray(x));
+    if (objs) {
+      const keys = [];
+      items.forEach((x) => Object.keys(x).forEach((k) => { if (keys.indexOf(k) < 0) keys.push(k); }));
+      if (keys.length <= 8) {      // 一样的字段：画成小表格
+        return el('div', { class: 'tablewrap' }, el('table', null,
+          el('thead', null, el('tr', null, keys.map((k) => el('th', { text: k })))),
+          el('tbody', null, items.map((x) => el('tr', null, keys.map((k) => el('td', null, renderValue(x[k] === undefined ? '' : x[k], depth + 1))))))));
+      }
+    }
+    const ul = el('ul', { class: 'plain' }, items.map((x) => el('li', null, renderValue(x, depth + 1))));
+    if (v.length > items.length) ul.appendChild(el('li', { class: 'muted', text: '……还有 ' + (v.length - items.length) + ' 条' }));
+    return ul;
+  }
+  if (typeof v === 'object') {
+    const ks = Object.keys(v);
+    if (!ks.length) return el('span', { class: 'muted', text: '（无）' });
+    return el('div', { class: 'kv' }, ks.map((k) => [el('div', { class: 'k', text: k }), el('div', { class: 'v' }, renderValue(v[k], depth + 1))]));
+  }
+  return el('span', { text: String(v) });
+}
+// ---------- 任务详情 ----------
+function stepDur(s) {
+  if (typeof s['秒'] === 'number') return fmtDur(s['秒']);
+  if (!s['开始']) return '';
+  const end = s['结束'] || (s['状态'] === '进行' ? Date.now() / 1000 : null);
+  return end ? fmtDur(end - s['开始']) : '';
+}
+function showJob(box, jid, seq) {
+  const head = el('div', { class: 'toolbar' }, el('button', { onclick: () => go('jobs') }, '← 返回任务列表'));
+  const title = el('h2', { text: '正在读取任务…' });
+  const sum = el('div', { class: 'card' });
+  const cancelBtn = el('button', { class: 'danger', style: 'display:none' }, '取消这个任务');
+  const againBtn = el('button', { class: 'main', style: 'display:none' }, '接着做');
+  const errBox = el('div', { class: 'msg err', role: 'alert' });
+  const steps = el('div');
+  const logBox = el('pre', { class: 'text', id: 'log', tabindex: '0', 'aria-label': '任务日志' });
+  const result = el('div');
+  box.append(head, title, sum, el('div', { class: 'toolbar' }, cancelBtn, againBtn), errBox,
+    el('h3', { text: '步骤' }), steps, el('h3', { text: '日志' }), logBox, el('h3', { text: '结果' }), result);
+  let logKey = '', resultKey = null, failures = 0;
+  cancelBtn.addEventListener('click', async () => {
+    if (!window.confirm('确定取消这个任务？正在进行的调用停下后结束，已经改好的部分会保留。')) return;
+    cancelBtn.disabled = true;
+    try { const d = await api('/api/jobs/' + encodeURIComponent(jid) + '/cancel', {}); toast(d['说明'] || '已请求取消', !d['取消']); }
+    catch (e) { if (!DEAD) toast(errText(e), true); }
+    finally { cancelBtn.disabled = false; }
+  });
+  againBtn.addEventListener('click', async () => {
+    if (!window.confirm('接着做会接着调用模型、要花钱；上次做完的步骤不重做。现在接着做？')) return;
+    againBtn.disabled = true;
+    try { const d = await api('/api/jobs/' + encodeURIComponent(jid) + '/again', {}); go('job/' + d['号']); }
+    catch (e) { if (!DEAD) toast(errText(e), true); }
+    finally { againBtn.disabled = false; }
+  });
+  const render = (j) => {
+    const u = j['用量'] || {};
+    const running = RUNNING.indexOf(j['状态']) >= 0;
+    title.textContent = (j['类别'] || '') + '：' + (j['标题'] || '');
+    clear(sum).appendChild(el('div', { class: 'kv' },
+      el('div', { class: 'k', text: '状态' }), el('div', null, tag(j['状态'])),
+      el('div', { class: 'k', text: '阶段' }), el('div', { text: j['阶段'] || '—' }),
+      el('div', { class: 'k', text: '项目' }), el('div', { class: 'v' }, j['项目'] ? [el('span', { text: (j['项目名'] || baseName(j['项目'])) + ' ' }), pathLink(j['项目'], '打开文件夹')] : el('span', { text: jobProject(j) || '—' })),
+      el('div', { class: 'k', text: '建立' }), el('div', { text: fmtTime(j['建立']) }),
+      el('div', { class: 'k', text: '用时' }), el('div', { text: jobDur(j) || '—' }),
+      el('div', { class: 'k', text: '用量' }), el('div', { text: '调用 ' + (u['次数'] || 0) + ' 次，输入 ' + fmtNum(u['输入'] || 0) + '、输出 ' + fmtNum(u['输出'] || 0) + ' token，约 ' + fmtUsd(u['美元'] || 0) }),
+      el('div', { class: 'k', text: '任务号' }), el('div', null, el('span', { text: (j['号'] || jid) + ' ' }), j['记录'] ? pathLink(j['记录'], '打开任务记录') : null)));
+    cancelBtn.style.display = running ? '' : 'none';
+    const canAgain = AGAIN_KINDS.indexOf(j['类别']) >= 0 && ['失败', '中断', '已取消'].indexOf(j['状态']) >= 0;
+    againBtn.style.display = canAgain ? '' : 'none';
+    const tip = canAgain ? '可以点“接着做”：上次做完的步骤不重做，已经花的钱不白花。' : '可以重新开始这个任务。';
+    if (j['状态'] === '失败' || (j['状态'] === '中断' && j['错误'])) showMsg(errBox, '出错了：' + (j['错误'] || '任务没做完就停了') + (canAgain ? '\n' + tip : ''), true);
+    else if (j['状态'] === '中断') showMsg(errBox, '任务中断了：程序关掉或电脑休眠时会这样。' + tip, true);
+    else errBox.className = 'msg';
+    const ss = Array.isArray(j['步骤']) ? j['步骤'] : [];
+    clear(steps).appendChild(ss.length ? el('div', { class: 'tablewrap' }, el('table', null,
+      el('thead', null, el('tr', null, ['#', '名称', '阶段', '状态', '用时'].map((t) => el('th', { text: t })),
+        ['输入 token', '输出 token'].map((t) => el('th', { class: 'num', text: t })), el('th', { text: '说明' }))),
+      el('tbody', null, ss.map((s) => el('tr', null, el('td', { text: s['号'] }), el('td', { text: s['名称'] || '' }), el('td', { text: s['阶段'] || '' }),
+        el('td', null, tag(s['状态'])), el('td', { text: stepDur(s) }), el('td', { class: 'num', text: s['输入'] ? fmtNum(s['输入']) : '' }),
+        el('td', { class: 'num', text: s['输出'] ? fmtNum(s['输出']) : '' }), el('td', { text: s['说明'] || '' }))))))
+      : el('p', { class: 'muted', text: running ? '还没有步骤，马上开始。' : '没有步骤。' }));
+    // 日志：最新在下面；本来就在底部时跟着滚，用户往上翻了就不动
+    const logs = Array.isArray(j['日志']) ? j['日志'] : [];
+    const key = logs.length + '|' + JSON.stringify(logs[logs.length - 1] || '');
+    if (key !== logKey) {
+      const atBottom = logKey === '' || logBox.scrollTop + logBox.clientHeight >= logBox.scrollHeight - 30;
+      const top = logBox.scrollTop;
+      logBox.textContent = logs.length ? logs.map((x) => {
+        const d = new Date(Number(x[0]) * 1000);
+        return (isNaN(d.getTime()) ? '' : pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '  ') + String(x[1]);
+      }).join('\n') : '（还没有日志）';
+      logBox.scrollTop = atBottom ? logBox.scrollHeight : top;
+      logKey = key;
+    }
+    const rk = JSON.stringify(j['结果'] === undefined ? null : j['结果']);
+    if (rk !== resultKey) {
+      resultKey = rk;
+      clear(result).appendChild(j['结果'] === null || j['结果'] === undefined
+        ? el('p', { class: 'muted', text: running ? '任务做完后显示结果。' : '没有结果。' }) : el('div', { class: 'card' }, renderValue(j['结果'])));
+    }
+    return running;
+  };
+  const tick = async () => {
+    let j;
+    try { j = await api('/api/jobs/' + encodeURIComponent(jid)); failures = 0; }
+    catch (e) {
+      if (stale(seq)) return;
+      if (e.code === 404 || e.code === 400) { title.textContent = '没有这个任务'; return; }
+      if (++failures >= 2) showMsg(errBox, errText(e), true);
+      later(tick, 4000); return;
+    }
+    if (stale(seq)) return;
+    if (render(j)) later(tick, 2000);   // 结束了就不再刷新
+  };
+  tick();
+}
+// ---------- 用量页 ----------
+let usageDays = 7;
+function usageTable(rows, keyName, keyLabel, total) {
+  const num = (r) => [el('td', { class: 'num', text: fmtNum(r['次数'] || 0) }), el('td', { class: 'num', text: fmtNum(r['输入'] || 0) }),
+    el('td', { class: 'num', text: fmtNum(r['输出'] || 0) }), el('td', { class: 'num', text: fmtUsd(r['估算美元'] || 0) })];
+  return el('div', { class: 'tablewrap' }, el('table', null,
+    el('thead', null, el('tr', null, el('th', { text: keyLabel }), ['调用次数', '输入 token', '输出 token', '估算美元'].map((t) => el('th', { class: 'num', text: t })))),
+    el('tbody', null, rows.map((r) => el('tr', null, el('td', { text: r[keyName] }), num(r))),
+      total ? el('tr', { style: 'font-weight:600' }, el('td', { text: '合计' }), num(total)) : null)));
+}
+async function showUsage(box, seq) {
+  const pickDays = el('div', { class: 'toolbar' }, el('span', { text: '看最近：' }),
+    [1, 7, 30].map((n) => el('button', { class: n === usageDays ? 'main' : '', onclick: () => { usageDays = n; route(); } }, n === 1 ? '今天' : n + ' 天')));
+  const out = el('div', null, el('p', { class: 'muted', text: '正在统计…' }));
+  box.append(el('h2', { text: '用量' }), pickDays,
+    el('p', { class: 'note', text: '按官方价估算，实际以中转账单为准。' }), out);
+  let d;
+  try { d = await api('/api/usage?' + new URLSearchParams({ '天': String(usageDays) })); }
+  catch (e) { if (!stale(seq)) clear(out).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+  if (stale(seq)) return;
+  clear(out);
+  const t = d['合计'] || {};
+  out.appendChild(el('p', { text: (d['起'] || '') + ' 到 ' + (d['止'] || '') + '：调用 ' + fmtNum(t['次数'] || 0) + ' 次，输入 ' + fmtNum(t['输入'] || 0) +
+    '、输出 ' + fmtNum(t['输出'] || 0) + ' token，约 ' + fmtUsd(t['估算美元'] || 0) + '。' }));
+  if (!t['次数']) { out.appendChild(empty('这段时间没有调用过模型。')); return; }
+  out.append(el('h3', { text: '按天' }), usageTable(d['按天'] || [], '日期', '日期', t),
+    el('h3', { text: '按项目' }), usageTable(d['按项目'] || [], '项目', '项目', t),
+    el('h3', { text: '按任务类别' }), usageTable(d['按任务'] || [], '任务', '任务类别', t));
+}
+
+// ---------- 标准页 ----------
+async function showStandard(f) {
+  const body = el('div', null, el('p', { class: 'muted', text: '正在读取…' }));
+  openModal(f['路径'] || '标准', body);
+  try {
+    const d = await api('/api/file?' + new URLSearchParams({ '路径': f['完整路径'] }));
+    clear(body).append(el('pre', { class: 'text', text: d['文字'] || '' }),
+      el('div', { class: 'formbtns' }, el('button', { onclick: () => openPath(d['路径'] || f['完整路径']) }, '在电脑上打开')));
+  } catch (e) { if (!DEAD) clear(body).appendChild(el('p', { class: 'bad', text: errText(e) })); }
+}
+async function showStandards(box, seq) {
+  const out = el('div', null, el('p', { class: 'muted', text: '正在读取…' }));
+  box.append(el('h2', { text: '标准' }),
+    el('p', { class: 'note', text: '写稿、审稿、改稿都按这些文件来。改稿时提的意见会自动记进来。点一行看全文。' }), out);
+  let d;
+  try { d = await api('/api/standards'); }
+  catch (e) { if (!stale(seq)) clear(out).appendChild(el('p', { class: 'bad', text: errText(e) })); return; }
+  if (stale(seq)) return;
+  clear(out);
+  const files = Array.isArray(d['文件']) ? d['文件'] : [];
+  if (!files.length) { out.appendChild(empty('标准文件夹里还没有文件。')); return; }
+  const table = (rows) => el('div', { class: 'tablewrap' }, el('table', null,
+    el('thead', null, el('tr', null, el('th', { text: '文件' }), el('th', { class: 'num', text: '字数' }), el('th', { text: '修改时间' }))),
+    el('tbody', null, rows.map((f) => el('tr', { class: 'click', tabindex: '0', onclick: () => showStandard(f),
+      onkeydown: (e) => { if (e.key === 'Enter') showStandard(f); } },
+      el('td', { text: f['路径'] }), el('td', { class: 'num', text: fmtNum(f['字数'] || 0) }), el('td', { text: fmtTime(f['修改']) }))))));
+  // _历史/ 是每次改标准前的备份，折起来放在后面
+  const now = files.filter((f) => !/^_/.test(String(f['路径'] || ''))), old = files.filter((f) => /^_/.test(String(f['路径'] || '')));
+  out.appendChild(now.length ? table(now) : empty('标准文件夹里只有历史备份。'));
+  if (old.length) out.appendChild(el('details', { style: 'margin-top:16px' },
+    el('summary', { style: 'cursor:pointer', text: '历史备份（每次改标准前自动存的，共 ' + old.length + ' 个文件）' }), table(old)));
+  if (d['文件夹']) out.appendChild(el('p', { class: 'note' }, el('span', { text: '文件夹：' + d['文件夹'] + ' ' }), pathLink(d['文件夹'], '打开')));
+}
+// ---------- 设置页 ----------
+async function showSettings(box, seq) {
+  box.appendChild(el('h2', { text: '设置' }));
+  const s = await loadSettings();
+  if (stale(seq)) return;
+  if (!s) { box.appendChild(el('p', { class: 'bad', text: '设置读不出来，请刷新页面再试' })); return; }
+  const url = textInput(s['地址'] || '', '空着＝用环境变量或本机 Claude Code 里的地址');
+  const key = el('input', { type: 'password', autocomplete: 'new-password', placeholder: s['有密钥'] ? '已有密钥；留空＝不改' : '粘贴中转给的密钥' });
+  const model = textInput(s['模型'] || '', '例如 claude-opus-5-5');
+  const conc = el('input', { type: 'number', min: '1', max: '8', step: '1' }); conc.value = String(s['并发'] || 4);
+  const proxy = check('走这台电脑的系统代理（代理软件）', s['走系统代理']);
+  const think = check('模型思考时照常发回摘要', s['思考摘要'] !== false);
+  const place = textInput(s['项目位置'] || '', '新报告默认放在这里');
+  const placeRow = el('div', { class: 'row' }, place, el('button', { onclick: async () => {
+    const r = await pick('文件夹', false, '选择新报告默认放在哪个文件夹');
+    if (r.length) place.value = r[0];
+  } }, '选择…'));
+  const src = el('div', { class: 'kv' });
+  const showSrc = (x) => clear(src).append(
+    el('div', { class: 'k', text: '密钥' }), el('div', { class: x['有密钥'] ? 'ok' : 'bad', text: x['有密钥'] ? '有（来自' + (x['密钥来源'] || '') + '）' : '没有设置' }),
+    el('div', { class: 'k', text: '实际用的地址' }), el('div', { class: 'v', text: x['地址生效'] || '官方接口' }),
+    el('div', { class: 'k', text: '这台电脑' }), el('div', { text: x['系统'] || '' }));
+  showSrc(s);
+  const msg = el('div', { class: 'msg', role: 'alert' });
+  const save = el('button', { class: 'main' }, '保存');
+  const test = el('button', null, '测试连接');
+  save.addEventListener('click', async () => {
+    const n = Number(conc.value);
+    if (!Number.isInteger(n) || n < 1 || n > 8) return showMsg(msg, '并发数要是 1～8 的整数', true);
+    if (!model.value.trim()) return showMsg(msg, '请填模型名称（例如 claude-opus-5-5）', true);
+    const body = { '地址': url.value.trim(), '模型': model.value.trim(), '并发': n, '走系统代理': proxy.box.checked, '思考摘要': think.box.checked };
+    if (place.value.trim()) body['项目位置'] = place.value.trim();   // 空着不改，免得新报告没有默认位置
+    if (key.value.trim()) body['密钥'] = key.value.trim();
+    save.disabled = true;
+    try {
+      const d = await api('/api/settings', body);
+      key.value = '';
+      key.placeholder = d['有密钥'] ? '已有密钥；留空＝不改' : '粘贴中转给的密钥';
+      showSrc(d);
+      await loadSettings();
+      showMsg(msg, '已保存', false);
+    } catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+    finally { save.disabled = false; }
+  });
+  test.addEventListener('click', async () => {
+    if (!window.confirm('测试连接会调用一次模型，花费很少。先保存过的设置才会生效。现在测试？')) return;
+    test.disabled = true;
+    showMsg(msg, '正在测试，最多等一分钟…', false);
+    try {
+      const d = await api('/api/settings/test', {});
+      showMsg(msg, (d['通'] ? '连接正常：' : '连不上：') + (d['说明'] || ''), !d['通']);
+    } catch (e) { if (!DEAD) showMsg(msg, errText(e), true); }
+    finally { test.disabled = false; }
+  });
+  box.appendChild(el('div', { class: 'card' },
+    el('div', { class: 'grid2' }, field('中转地址', url), field('密钥', key, '密钥只存在这台电脑上，不会拷进流水线文件夹')),
+    el('div', { class: 'grid2' }, field('模型', model), field('并发数（同时调用模型的个数，1～8）', conc)),
+    field('项目位置', placeRow, '“新报告”默认放在这个文件夹里'),
+    el('div', null, proxy.label, el('div', { class: 'note', text: '一般不勾：程序直接连中转，代理软件断了也不受影响。这台电脑要靠代理才能连上中转的，才勾上。' })),
+    el('div', null, think.label, el('div', { class: 'note', text: '一般勾着：模型想得久时连接上一直有字在走，中转不会当成断线掐掉；不多花钱。测试连接报“中转返回 400”的，取消勾选、保存后再测。' })),
+    el('h3', { text: '现在的连接' }), src,
+    el('div', { class: 'formbtns' }, save, test, el('span', { class: 'note', text: '测试连接会调用一次模型，花费很少。' })), msg));
+}
+
+// ---------- 启动 ----------
+loadSettings();
+route();
+/* SCRIPT-END */
+</script>
+</body>
+</html>

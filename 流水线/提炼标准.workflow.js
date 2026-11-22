@@ -24,6 +24,8 @@ async function 跑(prompt, opts) {
 }
 
 const F = (args && args.工厂) || '/Users/a1234/Desktop/评价报告流水线'
+// 只提炼预评价的标准。设计专篇的要点卡、审稿清单在 标准/设计专篇/，第一版不走提炼标准；下面 P 里也只有预评价项目
+if (args && /设计专篇/.test(args.类型 || '')) throw new Error('设计专篇的标准（标准/设计专篇/）不走提炼标准流水线，直接改那几份文件')
 const 日期 = (args && args.日期) || ''
 const S = F + '/标准'
 const P = {

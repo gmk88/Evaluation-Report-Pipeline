@@ -3,15 +3,17 @@ import re
 from collections import Counter
 from pathlib import Path
 
-from . import mdparse
+from . import mdparse, doctype
 from .common import LEVELS
-from .info import read_info, read_rules, merge_common
+from .info import read_info, read_rules, merge_common, merge_type
 
 INFO_FILE = '项目信息.md'
 RULES_FILE = '检查规则.md'
 COMMON_RULES = Path(__file__).resolve().parents[2] / '标准' / '通用检查规则.md'
 RE_PH = re.compile(r'\{\{\s*([^{}]+?)\s*\}\}')
 JUDGE_HEADS = ('判定', '判定结果', '评价结果', '结论')
+LEAD_HEADS = ('判断',)   # 没有“符合性”列、档位写在“判断及补充要求”格开头的表（200MW 选址表）
+RE_LEAD = re.compile('^(%s)' % '|'.join(sorted(LEVELS, key=len, reverse=True)))
 
 
 def plain(s):
@@ -50,9 +52,9 @@ def judge_col(tb):
     return None
 
 
-def judged_rows(tb):
-    """[(行号, 档位)]：跳过表头、整行合并的分组行、纵向合并的续格。"""
-    c = judge_col(tb)
+def judged_rows(tb, c=None):
+    """[(行号, 档位)]：跳过表头、整行合并的分组行、纵向合并的续格。c 不给就用“符合性”列。"""
+    c = judge_col(tb) if c is None else c
     if c is None:
         return []
     grid, mark = table_grid(tb)
@@ -70,9 +72,26 @@ def tally(tb):
     return Counter(v for _, v in judged_rows(tb))
 
 
-def count_clause(tb, subject):
-    """“表X共评价N项，其中符合a项、基本符合b项”；只有一档时写“均判为X”；0 档不写。"""
-    cnt = tally(tb)
+def lead_tally(tb):
+    """没有“符合性”列的表：“判断…”列每格都以档位开头（“符合。……”“基本符合，……”）时按开头计数；
+    有一格不是档位开头就返回 None，照旧报“没有符合性列”，不猜。"""
+    grid, _ = table_grid(tb)
+    h = tb.get('header', 1)
+    if judge_col(tb) is not None or not grid or h < 1:
+        return None
+    c = next((k for k, x in enumerate(grid[h - 1]) if re.sub(r'\s+', '', x).startswith(LEAD_HEADS)), None)
+    if c is None:
+        return None
+    heads = [RE_LEAD.match(v) for _, v in judged_rows(tb, c)]
+    if not heads or not all(heads):
+        return None
+    return Counter(m.group(1) for m in heads)
+
+
+def count_clause(tb, subject, cnt=None):
+    """“表X共评价N项，其中符合a项、基本符合b项”；只有一档时写“均判为X”；0 档不写。
+    cnt 不给就数“符合性”列（给的是 lead_tally 的结果）。"""
+    cnt = tally(tb) if cnt is None else cnt
     total = sum(cnt.values())
     order = [k for k in LEVELS if cnt.get(k)] + [k for k in cnt if k not in LEVELS]
     s = '%s共评价%d项，' % (subject, total)
@@ -82,7 +101,7 @@ def count_clause(tb, subject):
 
 
 def body_rows(tb):
-    """表体行数：不含表头和“合计”行，纵向合并的续行不另计。"""
+    """表体行数：不含表头、“合计”行和分组行（首格“一、…”，其余格都是 < 或 ^ 合并标记），纵向合并的续行不另计。"""
     grid, mark = table_grid(tb)
     n = 0
     for r in range(tb.get('header', 1), len(grid)):
@@ -90,6 +109,8 @@ def body_rows(tb):
         if first in ('合计', '总计', '小计'):
             continue
         if mark[r] and mark[r][0] == '^':
+            continue
+        if len(mark[r]) > 1 and all(m in ('<', '^') for m in mark[r][1:]) and re.match(r'[一二三四五六七八九十]+[、．.]', first):
             continue
         n += 1
     return n
@@ -153,15 +174,34 @@ def column_kind(head, values, strict=False):
     return None
 
 
+def inherit_info(root, own):
+    """附件册的项目信息：主报告的项目信息为底，附件册 项目信息.md 里写了的键盖上去（人员表、附件清单写了才盖）。"""
+    main = Path(doctype.main_root(root)) / INFO_FILE
+    if not main.exists():
+        return own
+    info = read_info(main)
+    for k, v in own.items():
+        if isinstance(v, list) and not v:
+            continue
+        info[k] = v
+    return info
+
+
 class Project:
     def __init__(self, root):
         self.root = Path(root).resolve()
         info_path = self.root / INFO_FILE
         if not info_path.exists():
             raise FileNotFoundError('项目文件夹里没有 %s：%s' % (INFO_FILE, self.root))
+        self.type = doctype.type_of(self.root)
         self.info = read_info(info_path)
+        if self.type == doctype.ANNEX:
+            self.info = inherit_info(self.root, self.info)
         self.rules = read_rules(self.root / RULES_FILE)
         self.common_rules = merge_common(self.rules, COMMON_RULES)
+        # 报告类型的检查规则（设计专篇：标准/设计专篇/检查规则.md）叠在通用规则上；预评价没有
+        self.type_rules = merge_type(self.rules, doctype.path_of(self.type, '类型检查规则'),
+                                     self.common_rules, COMMON_RULES)
         self.blocks, self.files = mdparse.parse_project_body(self.root / '正文')
         self.tables, self.dup_tables = {}, []
         for b in self.blocks:
@@ -205,10 +245,11 @@ class Project:
         kind = parts[0]
         if kind == '计数':
             tb = self.table(parts[1])
-            if judge_col(tb) is None:
+            cnt = None if judge_col(tb) is not None else lead_tally(tb)
+            if judge_col(tb) is None and cnt is None:
                 raise KeyError('表%s没有“符合性”列' % parts[1].lstrip('表'))
             subject = parts[2] if len(parts) > 2 and parts[2] else '表' + parts[1].lstrip('表')
-            return count_clause(tb, subject)
+            return count_clause(tb, subject, cnt)
         if kind == '行数':
             return str(body_rows(self.table(parts[1])))
         if kind == '合计':
